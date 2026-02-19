@@ -90,7 +90,7 @@ public class StepsActivity extends AppCompatActivity {
         if (userEmail != null && !userEmail.isEmpty()) {
             String firstName = userEmail.split("@")[0];
             firstName = firstName.substring(0, 1).toUpperCase() + firstName.substring(1);
-            tvWelcome.setText("Welcome," + firstName );
+            tvWelcome.setText("Welcome, " + firstName );
         } else {
             tvWelcome.setText("Welcome!");
         }

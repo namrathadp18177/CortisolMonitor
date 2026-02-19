@@ -61,6 +61,8 @@
             android:exported="false" />
 
 
+        <activity android:name=".CareProviderDashboardActivity"
+            android:exported="false" />
 
         <activity
             android:name=".QuestionnaireActivity2"
