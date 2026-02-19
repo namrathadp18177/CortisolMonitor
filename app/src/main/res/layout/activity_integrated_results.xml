@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    tools:context=".IntegratedResultsActivity">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="INTEGRATED ASSESSMENT RESULTS"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+    </RelativeLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- PHQ-9 Depression Screening Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="PHQ-9 Depression Screening"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvPhqScore"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Score: 10"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvPhqWeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Weight: 3 (Moderate)"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvPhqClassification"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Moderate Depression"
+                        android:textColor="#FF5722"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Resilience Assessment Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Resilience Assessment"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvResilienceScore"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Score: 3.5"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvResilienceWeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Weight: 2 (Normal resilience)"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvResilienceClassification"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Normal Resilience"
+                        android:textColor="#4CAF50"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Biomarker Values Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Biomarker Values"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvCortisolValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Cortisol Value: 0.00 ng/mL"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvCortisolWeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Weight: +0"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvDheaValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="DHEA Value: 0.00 ng/mL"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvDheaWeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Weight: +0"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvRatioValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Cortisol/DHEA Ratio: 0.00"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvRatioWeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Weight: +0"
+                        android:textColor="#555555"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvStressLevel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Stress Level: Acute stress"
+                        android:textColor="#FF5722"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Overall Result Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="#E3F2FD">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Overall Result"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <!-- Add Total Weight to the Overall Results section -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Total Weight: "
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvOverallTotalWeight"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="9" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvFinalResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Mild"
+                        android:textColor="#FF5722"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="8dp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Action buttons at bottom -->
+    <Button
+        android:id="@+id/btnSaveIntegratedResults"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SAVE RESULTS"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#673AB7"
+        android:layout_margin="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp">
+
+        <Button
+            android:id="@+id/btnHome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="RETURN HOME"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#2196F3"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btnShareIntegratedResults"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="SHARE RESULTS"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#2196F3"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+</LinearLayout>

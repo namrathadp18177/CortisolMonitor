@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Head outline -->
+    <path
+        android:fillColor="@color/primary"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12c0,4.42 2.87,8.19 6.84,9.5l0.16,-2.1C6.21,18.02 4,15.24 4,12 4,7.58 7.58,4 12,4s8,3.58 8,8 -2.21,6.02 -5,7.4l0.16,2.1C19.13,20.19 22,16.42 22,12c0,-5.52 -4.48,-10 -10,-10z"/>
+
+    <!-- Heartbeat inside head -->
+    <path
+        android:fillColor="@color/accent"
+        android:pathData="M8,12h1.5l1,-2 1,4 1,-2h1.5"
+        android:strokeWidth="1"
+        android:strokeColor="@color/accent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

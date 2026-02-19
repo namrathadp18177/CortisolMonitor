@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#4CAF50"
+        android:elevation="4dp"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_menu_revert"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            app:tint="#FFFFFF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Test Results"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_gravity="center" />
+    </androidx.appcompat.widget.Toolbar>
+
+    <!-- SCROLLVIEW FOR CONTENT -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Current Result Card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Current Reading"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="#757575" />
+
+                    <TextView
+                        android:id="@+id/tvCortisol"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Cortisol: -- ng/mL"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:textColor="#4CAF50"
+                        android:layout_marginTop="8dp" />
+
+                    <TextView
+                        android:id="@+id/tvTimestamp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Measured on: --"
+                        android:textSize="14sp"
+                        android:textColor="#757575"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Previous Test Results Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Previous Test Results"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:textColor="#424242" />
+
+            <TextView
+                android:id="@+id/tvPreviousResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No previous results available."
+                android:textSize="14sp"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:textColor="#757575"
+                android:visibility="gone" />
+
+            <!--  TABLE WITH FIXED HEIGHT - NO NESTED SCROLL -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:background="#F5F5F5"
+                android:padding="8dp"
+                android:orientation="vertical">
+
+                <TableLayout
+                    android:id="@+id/tablePreviousResults"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:stretchColumns="0,1">
+
+                    <!-- Header Row -->
+                    <TableRow
+                        android:background="#C8E6C9"
+                        android:padding="8dp">
+
+                        <TextView
+                            android:text="Time"
+                            android:textStyle="bold"
+                            android:padding="8dp"
+                            android:textSize="14sp"
+                            android:textColor="#2E7D32" />
+
+                        <TextView
+                            android:text="Cortisol(ng/mL)"
+                            android:textStyle="bold"
+                            android:padding="8dp"
+                            android:gravity="end"
+                            android:textSize="14sp"
+                            android:textColor="#2E7D32" />
+                    </TableRow>
+                </TableLayout>
+            </LinearLayout>
+
+            <!-- Graph Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Today's Pattern"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:textColor="#424242" />
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/graphViewResults"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="#FAFAFA"
+                android:elevation="2dp" />
+
+            <!-- Action Button -->
+            <Button
+                android:id="@+id/btnBiomarker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Go to Dashboard"
+                android:textColor="#FFFFFF"
+                android:background="#4CAF50"
+                android:layout_margin="16dp"
+                android:padding="16dp"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:elevation="4dp" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

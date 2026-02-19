@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <!-- Header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="User Profile"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Birth Date Selection (First and Mandatory) -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Birth Date *"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/etBirthDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Click to select your birth date"
+        android:inputType="none"
+        android:focusable="false"
+        android:clickable="true"
+        android:padding="16dp"
+        android:background="@drawable/edit_text_background"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Age Display (Auto-calculated, Read-only) -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Age (Auto-calculated)"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/etAge"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Age will be calculated from birth date"
+        android:inputType="none"
+        android:focusable="false"
+        android:enabled="false"
+        android:padding="16dp"
+        android:background="@drawable/edit_text_background"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Information Text -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Your age information helps us provide more accurate biomarker analysis and age-adjusted recommendations."
+        android:textSize="14sp"
+        android:textColor="@android:color/darker_gray"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btnCancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Cancel"
+            android:background="@drawable/button_background"
+            android:textColor="@android:color/white"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Save"
+            android:background="@drawable/button_background"
+            android:textColor="@android:color/white"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+</LinearLayout> 

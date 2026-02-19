@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardQuestionnaire"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    style="@style/Widget.App.CardView">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header with Title and Status Icon -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvQuestionnaireTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Questionnaire Title"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Status Icon -->
+            <ImageView
+                android:id="@+id/ivStatusIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_play_circle"
+                android:visibility="gone"
+                app:tint="@color/primary" />
+
+            <!-- Checkmark for completed -->
+            <ImageView
+                android:id="@+id/ivCheckmark"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_check_circle"
+                android:visibility="gone"
+                app:tint="@color/accent" />
+
+        </LinearLayout>
+
+        <!-- Description -->
+        <TextView
+            android:id="@+id/tvQuestionnaireDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Description of the questionnaire"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:lineSpacingExtra="2dp" />
+
+        <!-- Progress Indicator (for partially completed) -->
+        <LinearLayout
+            android:id="@+id/progressLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvProgress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Progress: 5/9 completed"
+                android:textSize="12sp"
+                android:textColor="@color/primary"
+                android:textStyle="italic" />
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="60dp"
+                android:layout_height="6dp"
+                android:progress="55"
+                android:progressTint="@color/primary"
+                android:progressBackgroundTint="@color/secondary" />
+
+        </LinearLayout>
+
+        <!-- Action Button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:gravity="end">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStartQuestionnaire"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Start"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                style="@style/Widget.App.Button" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnContinueQuestionnaire"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Continue"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:visibility="gone"
+                style="@style/Widget.App.Button" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnViewResults"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="View Results"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:visibility="gone"
+                style="@style/Widget.App.Button.OutlinedButton" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView> 

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardNextSteps"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    style="@style/Widget.App.CardView">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/quesicon"
+                app:tint="@color/primary"
+                android:layout_marginEnd="12dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Next Steps"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvNextStepsInstructions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:lineSpacingExtra="2dp"
+            android:text="Based on your Mental Health Symptom Screener results, here are the recommended next steps..."/>
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView> 

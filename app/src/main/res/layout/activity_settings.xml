@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".SettingsActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bluetooth Settings"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Samples per second:"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etSamplesPerSec"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="Enter samples per second"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Points to average:"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etPointsToAvg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="Enter points to average"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Experiment duration (sec):"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etDurationOfExp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="Enter experiment duration"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Moving average points:"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etMovingAvgValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="Enter moving average points"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Active Ports:"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <CheckBox
+            android:id="@+id/checkboxPort0"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Port 0" />
+
+        <CheckBox
+            android:id="@+id/checkboxPort1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Port 1" />
+
+        <CheckBox
+            android:id="@+id/checkboxPort2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Port 2" />
+
+        <CheckBox
+            android:id="@+id/checkboxPort3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Average Port (Filtered Output)"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btnSaveSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Save"
+                android:onClick="onClickSave"
+                android:layout_marginEnd="16dp"
+                android:layout_marginRight="16dp" />
+
+            <Button
+                android:id="@+id/btnCancelSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancel"
+                android:onClick="onClickCancel" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

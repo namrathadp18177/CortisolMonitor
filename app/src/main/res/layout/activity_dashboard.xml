@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
+            app:titleTextColor="@color/white"
+            app:popupTheme="@style/Widget.App.PopupOverlay"/>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:clipToPadding="false"
+            android:clipChildren="false">
+
+
+            <!-- Welcome Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"
+                android:layout_marginTop="8dp">
+
+                <ImageView
+                    android:id="@+id/ivAppIcon"
+                    android:layout_width="70dp"
+                    android:layout_height="70dp"
+                    android:layout_marginBottom="16dp"
+                    android:scaleType="fitCenter"/>
+
+                <TextView
+                    android:id="@+id/tvWelcome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Select the action you want to perform:"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textAlignment="center"
+                    android:textColor="@color/text_primary"/>
+
+            </LinearLayout>
+
+
+            <!-- Stress Score Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/stressScoreCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:visibility="gone"
+                style="@style/Widget.App.CardView">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Current Stress Level"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_primary"/>
+
+                    <TextView
+                        android:id="@+id/tvStressScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--"
+                        android:textSize="48sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Actions List -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <!-- 1. Health Assessment Questionnaire -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardQuestionnaire"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"
+                    style="@style/Widget.App.CardView">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="16dp">
+
+                        <ImageView
+                            android:id="@+id/ivQuestionnaire"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/quesicon"
+                            app:tint="@color/primary"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginEnd="8dp"
+                            app:layout_constraintStart_toEndOf="@id/ivQuestionnaire"
+                            app:layout_constraintEnd_toStartOf="@id/ivArrow1"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Health Assessment Questionnaire"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold"
+                                android:textSize="16sp"/>
+
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/ivArrow1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="›"
+                            android:textSize="32sp"
+                            android:textColor="@color/text_secondary"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent"/>
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 2. Measure Cortisol -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardBiomarkerConnection1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"
+                    style="@style/Widget.App.CardView">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="16dp">
+
+                        <ImageView
+                            android:id="@+id/ivBiomarker"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/dna_20"
+                            app:tint="@color/primary"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginEnd="8dp"
+                            app:layout_constraintStart_toEndOf="@id/ivBiomarker"
+                            app:layout_constraintEnd_toStartOf="@id/ivArrow2"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Measure Cortisol"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold"
+                                android:textSize="16sp"/>
+
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/ivArrow2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="›"
+                            android:textSize="32sp"
+                            android:textColor="@color/text_secondary"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent"/>
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 3. Combined Result -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardResults"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"
+                    style="@style/Widget.App.CardView">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="16dp">
+
+                        <ImageView
+                            android:id="@+id/ivResults"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/analyzeicon"
+                            app:tint="@color/primary"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginEnd="8dp"
+                            app:layout_constraintStart_toEndOf="@id/ivResults"
+                            app:layout_constraintEnd_toStartOf="@id/ivArrow3"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Combined Result"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold"
+                                android:textSize="16sp"/>
+
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/ivArrow3"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="›"
+                            android:textSize="32sp"
+                            android:textColor="@color/text_secondary"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent"/>
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

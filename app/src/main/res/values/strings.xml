@@ -1,0 +1,239 @@
+<resources>
+    <!-- PHQ-9 Questionnaire Strings -->
+    <string name="questionnaire_name">Patient Health Questionnaire (PHQ-9)</string>
+    <string name="readiness_message">Take your time, and remember to answer honestly!</string>
+    <string name="start_message">Let\'s start! Remember, there are no right or wrong answers.</string>
+    <string name="ready_to_start">Are you ready to start the questionnaire?</string>
+    <string name="start_questionnaire">Start Questionnaire</string>
+    <string name="next">Next</string>
+    <string name="finish_button">Finish</string>
+    <string name="next_button">Next</string>
+    <string name="select_answer_message">Please select an answer before moving forward.</string>
+    <string name="completion_message">Thank you for completing the questionnaire!</string>
+
+    <string name="welcome_text">Welcome to Your Health Journey</string>
+
+    <!-- Step 1 -->
+    <string name="step1_title">1. Complete Health Questionnaires</string>
+    <string name="step1_description">Answer a comprehensive set of questions about your lifestyle, medical history, and current health concerns to help us personalize your health profile.</string>
+
+    <!-- Step 2 -->
+    <string name="step2_title">2. Measure Cortisol Level</string>
+    <string name="step2_description">Perform saliva sampling periodically and measure using the provided test cartridges and the analyzer.</string>
+    <!-- Step 3 -->
+    <string name="step3_title">3. View Combined Analysis</string>
+    <string name="step3_description">Get insights from your subjective questionnaire responses combined with objective cortisol levels for comprehensive result.</string>
+
+    <!-- Step 4 -->
+    <string name="step4_title">4. Get Personalized Recommendations</string>
+    <string name="step4_description">Receive tailored health recommendations and action plans based on your comprehensive health assessment.</string>
+
+    <string name="start_journey">Continue</string>
+    <string name="question_format">%1$d. %2$s</string>
+    <string name="questionnaire">PHQ-9 Questionnaire</string>
+    <string name="questionnaire_description">Complete the Patient Health Questionnaire to assess your mental well-being</string>
+    <string name="biomarker">Biomarker Connection</string>
+    <string name="biomarker_bluetooth">Chatbot support</string>
+    <string name="biomarker_description">Connect to your biomarker device via Bluetooth</string>
+    <string name="results">View Results</string>
+    <string name="results_description">Check your questionnaire results and biomarker data</string>
+
+    <!-- Depression severity levels -->
+    <string name="minimal_depression">Minimal depression</string>
+    <string name="mild_depression">Mild depression</string>
+    <string name="moderate_depression">Moderate depression</string>
+    <string name="moderately_severe_depression">Moderately severe depression</string>
+    <string name="severe_depression">Severe depression</string>
+
+    <string name="phq9_results_title">PHQ-9 Assessment Results</string>
+    <string name="recommendation_title">Recommendations</string>
+    <string name="minimal_recommendation">Your symptoms suggest minimal depression. Continue monitoring your mood and maintain healthy habits.</string>
+    <string name="mild_recommendation">Your symptoms suggest mild depression. Consider talking to a mental health professional for guidance.</string>
+    <string name="moderate_recommendation">Your symptoms suggest moderate depression. We recommend consulting with a mental health professional.</string>
+    <string name="moderately_severe_recommendation">Your symptoms suggest moderately severe depression. Please consult with a mental health professional soon.</string>
+    <string name="severe_recommendation">Your symptoms suggest severe depression. Please seek professional help as soon as possible.</string>
+    <string name="connect_biomarker">Connect the device </string>
+    <string name="phq_score_format">Your PHQ-9 Score: %d</string>
+
+    <!-- Resilience Questionnaire Strings -->
+    <string name="resilience_questionnaire_name">Resilience Assessment</string>
+    <string name="resilience_welcome_message">Welcome to the resilience assessment.</string>
+    <string name="resilience_readiness_message">This assessment will help measure your ability to bounce back from stress and adversity.</string>
+    <string name="resilience_start_message">Let\'s begin! There are no right or wrong answers - just answer honestly.</string>
+    <string name="resilience_ready_to_start">Are you ready to assess your resilience?</string>
+    <string name="resilience_start_assessment">Start Assessment</string>
+
+    <!-- Resilience Questions -->
+    <string name="resilience_q1">I tend to bounce back quickly after hard times.</string>
+    <string name="resilience_q2">I have a hard time making it through stressful events.</string>
+    <string name="resilience_q3">It does not take me long to recover from a stressful event.</string>
+    <string name="resilience_q4">It is hard for me to snap back when something bad happens.</string>
+    <string name="resilience_q5">I usually come through difficult times with little trouble.</string>
+    <string name="resilience_q6">I tend to take a long time to get over setbacks in my life.</string>
+
+    <!-- Answer Options -->
+    <string name="resilience_option_strongly_disagree">Strongly Disagree</string>
+    <string name="resilience_option_disagree">Disagree</string>
+    <string name="resilience_option_neutral">Neutral</string>
+    <string name="resilience_option_agree">Agree</string>
+    <string name="resilience_option_strongly_agree">Strongly Agree</string>
+
+    <!-- Button Labels -->
+    <string name="resilience_next">Next</string>
+    <string name="resilience_finish">Finish</string>
+    <string name="resilience_select_answer">Please select an answer before continuing.</string>
+    <string name="resilience_completion">Thank you for completing the resilience assessment!</string>
+
+    <!-- Resilience Interpretation Strings -->
+    <string name="resilience_low">Low resilience. Consider speaking with a mental health professional for support.</string>
+    <string name="resilience_normal">Normal Resilience</string>
+    <string name="resilience_moderate">Moderate resilience. You have some coping skills but may benefit from developing additional strategies.</string>
+    <string name="resilience_good">Good resilience. You generally bounce back well from challenges.</string>
+    <string name="resilience_high">High resilience. You have excellent coping skills and adapt well to challenges.</string>
+
+    <!-- Resilience Recommendations -->
+    <string name="resilience_low_recommendation">Focus on building social connections, practicing self-care, and learning stress management techniques.</string>
+    <string name="resilience_moderate_recommendation">Continue developing positive coping strategies and mindfulness practices to enhance your resilience.</string>
+    <string name="resilience_good_recommendation">Maintain your existing coping strategies and consider mentoring others in building resilience.</string>
+    <string name="resilience_high_recommendation">Your strong resilience is an asset. Consider sharing your coping strategies with others who might benefit.</string>
+
+    <!-- Result Display -->
+    <string name="resilience_results_title">Resilience Assessment Results</string>
+
+    <!-- Encouraging Messages -->
+    <string name="encouragement_1">You\'re doing great!</string>
+    <string name="encouragement_2">Keep going!</string>
+    <string name="encouragement_3">Take your time, no rush!</string>
+    <string name="encouragement_4">You\'re making great progress!</string>
+    <string name="encouragement_5">Almost there, you\'ve got this!</string>
+    <string name="encouragement_6">Thank you for being honest!</string>
+    <string name="encouragement_7">Your responses are valuable!</string>
+
+    <!-- App Name -->
+    <string name="app_name">Cortisol Monitor</string>
+
+    <!-- Descriptions -->
+    <string name="app_description">Your personal companion for tracking and managing stress levels.
+        Understand your emotional well-being through intelligent monitoring and personalized insights.</string>
+    <string name="app_mascot_description">Stress Monitor Mascot</string>
+
+    <!-- Button Texts -->
+    <string name="get_started">GET STARTED</string>
+
+    <!-- Error Messages -->
+    <string name="network_error">Please check your internet connection</string>
+    <string name="unknown_error">An unexpected error occurred</string>
+    <string name="results_title">Your Assessment Results</string>
+    <string name="phq9_title">Depression Assessment (PHQ-9)</string>
+    <string name="resilience_title">Resilience Assessment</string>
+
+    <string name="no_data_available">No data available</string>
+
+    <string name="resilience_average_format">Average: %.1f/5</string>
+
+
+    <!-- BRS Score Strings -->
+    <string name="brs_score_label">BRS Score: %.1f</string>
+
+    <!-- BRS Categories -->
+    <string name="brs_category_high">high</string>
+    <string name="brs_category_normal">normal</string>
+    <string name="brs_category_low">low</string>
+
+    <!-- BRS Explanations -->
+    <string name="brs_explanation_high">You demonstrate strong resilience. This suggests you are likely to bounce back quickly after stress or adversity.</string>
+    <string name="brs_explanation_normal">You show average resilience. You can usually recover from challenges but may benefit from additional coping strategies.</string>
+    <string name="brs_explanation_low">Your resilience level suggests you may have difficulty bouncing back from stressful events. Building resilience skills could be beneficial.</string>
+
+    <!-- BRS Explanation Format -->
+    <string name="brs_explanation_format">Your resilience is %1$s. %2$s</string>
+    <!-- Result Activity Strings -->
+    <string name="results_header">Your Assessment Results</string>
+    <string name="home_button">Return Home</string>
+    <string name="resources_button">Biomarker Connection</string>
+
+
+    <string name="phq_weight_format">Weight: %1$d (%2$s)</string>
+    <string name="resilience_weight_format">Weight: %1$d (%2$s)</string>
+
+    <!-- You should already have these strings from your original code -->
+    <string name="phq_result_title">PHQ-9 Assessment Results</string>
+    <string name="resilience_result_title">Brief Resilience Scale Results</string>
+    <string name="resilience_score_format">Score: %.1f</string>
+
+    <!-- Optional - if you want to add labels for biomarker weights -->
+    <string name="cortisol_weight_format">Cortisol Weight: %1$d (%2$s)</string>
+    <string name="car_weight_format">CAR Weight: %1$d (%2$s)</string>
+    <string name="dhea_weight_format">DHEA Weight: %1$d (%2$s)</string>
+    <string name="cort_dhea_weight_format">Cortisol/DHEA Ratio Weight: %1$d (%2$s)</string>
+
+    <string name="welcome_message">Welcome to your health assessment platform</string>
+    <string name="instruction_message">Please complete the assessments to help us understand your current wellbeing.</string>
+
+    <!-- Race options -->
+    <string-array name="race_options">
+        <item>Asian</item>
+        <item>White</item>
+        <item>Black</item>
+        <item>Hispanic</item>
+        <item>Other</item>
+    </string-array>
+
+    <!-- Relationship status options -->
+    <string-array name="relationship_status_options">
+        <item>Single</item>
+        <item>Married</item>
+        <item>Divorced</item>
+        <item>Widowed</item>
+        <item>In Relationship</item>
+    </string-array>
+
+    <!-- Questionnaire Results Activity -->
+    <string name="back_button_description">Go back</string>
+    <string name="questionnaire_results_title">Questionnaire Results</string>
+    <string name="questionnaire_results_content_description">Scrollable area displaying your questionnaire results</string>
+    <string name="continue_to_biomarker">Continue to Biomarker Collection</string>
+
+    <!-- Section Titles -->
+    <string name="mental_health_screener_results">Mental Health Screener Results</string>
+    <string name="depression_screening_phq9">Depression Screening (PHQ-9)</string>
+    <string name="beck_depression_inventory">Beck Depression Inventory (BDI-II)</string>
+    <string name="generalized_anxiety_disorder">Generalized Anxiety Disorder (GAD-7)</string>
+    <string name="brief_resilience_scale">Brief Resilience Scale (BRS)</string>
+    <string name="next_steps">Next Steps</string>
+
+    <!-- Score Labels -->
+    <string name="mood_and_energy">Mood and Energy</string>
+    <string name="anxiety_and_stress">Anxiety and Stress</string>
+    <string name="sleep_and_appetite">Sleep and Appetite</string>
+    <string name="cognition_and_thinking">Cognition and Thinking</string>
+    <string name="repetitive_thoughts">Repetitive Thoughts</string>
+    <string name="physical_symptoms">Physical Symptoms</string>
+    <string name="total_score">Total Score</string>
+    <string name="score">Score</string>
+    <string name="final_results">Final Results</string>
+    <string name="loading_results">Loading Results...</string>
+    <string name="stress_level">Stress Level</string>
+    <string name="result_description_placeholder">Analysis of your data is in progress. Please wait while we generate your results.</string>
+    <string name="biomarker_results">Biomarker Results</string>
+    <string name="cortisol_placeholder">Cortisol: -- ng/mL</string>
+    <string name="dhea_placeholder">DHEA: -- ng/mL</string>
+    <string name="ratio_placeholder">Cortisol/DHEA Ratio: --</string>
+    <string name="mental_health_assessment">Mental Health Assessment</string>
+    <string name="mental_health_score_placeholder">Total Score: --</string>
+    <string name="recommendations">Recommendations</string>
+    <string name="recommendations_placeholder">Based on your results, we will provide personalized recommendations.</string>
+    <string name="send_results_to_doctor">Send Results to Healthcare Provider</string>
+    <string name="return_to_home">Return to Home</string>
+    <string name="back">Back</string>
+
+    <!-- Stress category descriptions -->
+    <string name="low_stress_description">Your results indicate low stress levels. Your biomarkers and questionnaire responses suggest your stress management is effective. Continue your current healthy practices to maintain this balance.</string>
+    <string name="moderate_stress_description">Your results indicate moderate stress levels. While not severe, your biomarkers and questionnaire responses suggest you may benefit from additional stress management techniques. Consider implementing some of the recommendations below.</string>
+    <string name="high_stress_description">Your results indicate high stress levels. Your biomarkers and questionnaire responses suggest you are experiencing significant stress that may be impacting your health and wellbeing. Please consider discussing these results with a healthcare professional.</string>
+
+
+    <!-- Next Steps Description -->
+    <string name="next_steps_description">Your mental health assessment is now complete. The next step is to collect biomarker data to get a more comprehensive understanding of your wellbeing.</string>
+
+</resources>

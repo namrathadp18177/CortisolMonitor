@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    tools:context=".CombinedResultsActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        app:title="INTEGRATED RESULTS"
+        app:titleTextColor="@color/white"
+        tools:ignore="MissingConstraints" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Biomarker Results"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#333333"
+                android:gravity="center"
+                android:layout_marginBottom="24dp"/>
+
+            <!-- Real-time update controls -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Data Updates"
+                        android:textSize="18sp"
+                        android:textColor="#333333"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+
+                    <TextView
+                        android:id="@+id/tvUpdateStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Auto-updates: OFF"
+                        android:textSize="16sp"
+                        android:textColor="#555555"
+                        android:layout_marginBottom="12dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnRefresh"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:backgroundTint="@color/colorPrimary"
+                            android:textColor="@color/white"
+                            android:text="Refresh Data" />
+
+                        <Button
+                            android:id="@+id/btnToggleUpdates"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:backgroundTint="@color/colorPrimary"
+                            android:textColor="@color/white"
+                            android:text="Start Real-time Updates" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Biomarker results section -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Biomarker Values"
+                        android:textSize="18sp"
+                        android:textColor="#333333"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+
+                    <!-- Cortisol -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:text="Cortisol:" />
+
+                        <TextView
+                            android:id="@+id/tvCortisolValue"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="7.45 ng/mL" />
+
+                        <TextView
+                            android:id="@+id/tvCortisolRange"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            tools:text="5.0-9.0 (Moderate)" />
+
+                        <TextView
+                            android:id="@+id/tvCortisolWeight"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="0.5"
+                            android:gravity="center"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="+2" />
+                    </LinearLayout>
+
+                    <!-- DHEA -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:text="DHEA:" />
+
+                        <TextView
+                            android:id="@+id/tvDheaValue"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="3.21 ng/mL" />
+
+                        <TextView
+                            android:id="@+id/tvDheaRange"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            tools:text="2.0-4.0 (Moderate)" />
+
+                        <TextView
+                            android:id="@+id/tvDheaWeight"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="0.5"
+                            android:gravity="center"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="+2" />
+                    </LinearLayout>
+
+                    <!-- Ratio -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:text="Cortisol/DHEA:" />
+
+                        <TextView
+                            android:id="@+id/tvRatioValue"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="2.32" />
+
+                        <TextView
+                            android:id="@+id/tvRatioRange"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            tools:text="> 2.0 (High stress)" />
+
+                        <TextView
+                            android:id="@+id/tvRatioWeight"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="0.5"
+                            android:gravity="center"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="+3" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Summary results section -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Summary Results"
+                        android:textSize="18sp"
+                        android:textColor="#333333"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+
+                    <!-- Total weight -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Total Weight: "
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvTotalWeight"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold"
+                            tools:text="7" />
+                    </LinearLayout>
+
+                    <!-- Stress Level -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Stress Level: "
+                            android:textSize="16sp"
+                            android:textColor="#555555"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvStressLevel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#FF5722"
+                            tools:text="Moderate Stress" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btnSaveResults"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:textColor="@color/white"
+                    android:text="Save Results" />
+
+                <Button
+                    android:id="@+id/btnShareResults"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:textColor="@color/white"
+                    android:text="Share Results" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnHome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="@color/colorPrimary"
+                android:textColor="@color/white"
+                android:padding="12dp"
+                android:text="Integrated results" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

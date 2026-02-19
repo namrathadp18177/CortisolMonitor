@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    tools:context=".OutputBluetooth">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        app:title="Raw Optical Signal"
+        app:titleTextColor="@color/white" />
+
+    <LinearLayout
+        android:id="@+id/buttonPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/toolbar"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/buttonStartBL"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/colorPrimary"
+            android:onClick="onClickStart"
+            android:text="START"
+            android:textColor="@color/white" />
+
+        <Button
+            android:id="@+id/buttonStopBL"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/colorAccent"
+            android:onClick="onClickStop"
+            android:text="STOP"
+            android:textColor="@color/white" />
+
+        <Button
+            android:id="@+id/buttonConnectBL"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/colorPrimary"
+            android:onClick="onClickConnect"
+            android:text="CONNECT"
+            android:textColor="@color/white" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/secondButtonPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/buttonPanel"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/buttonSettingBL"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/colorTextSecondary"
+            android:onClick="onClickSetting"
+            android:text="SETTINGS"
+            android:textColor="@color/white" />
+
+        <Button
+            android:id="@+id/buttonSaveBL"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/colorTextSecondary"
+            android:onClick="onClickSave"
+            android:text="SAVE"
+            android:textColor="@color/white" />
+
+        <Button
+            android:id="@+id/buttonShowBL"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/colorTextSecondary"
+            android:onClick="onClickShow"
+            android:text="RESULTS"
+            android:textColor="@color/white" />
+    </LinearLayout>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/infoCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/secondButtonPanel"
+        android:layout_margin="8dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp">
+
+        <TextView
+            android:id="@+id/textAppendBL"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:text="Data Length: \nTime passed:"
+            android:textSize="16sp" />
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_below="@id/infoCard"
+        android:layout_margin="8dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        android:layout_alignParentBottom="true"
+        >
+
+        <com.jjoe64.graphview.GraphView
+            android:id="@+id/graphViewBL"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingLeft="40dp"
+            android:paddingRight="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="32dp" />
+    </androidx.cardview.widget.CardView>
+
+
+</RelativeLayout>
