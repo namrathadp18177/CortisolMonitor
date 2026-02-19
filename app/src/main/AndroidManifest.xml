@@ -63,6 +63,23 @@
 
         <activity android:name=".CareProviderDashboardActivity"
             android:exported="false" />
+        <activity
+            android:name=".RegisterPatientActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ModifyPatientActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".EditPatientActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ViewHistoryActivity"
+            android:exported="false" />
+
+
+
 
         <activity
             android:name=".QuestionnaireActivity2"

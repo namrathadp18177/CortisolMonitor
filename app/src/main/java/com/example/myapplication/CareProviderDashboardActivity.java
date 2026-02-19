@@ -1,36 +1,26 @@
 package com.example.myapplication;
 
-
 import android.content.Intent;
-
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.animation.OvershootInterpolator;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
+import com.google.android.material.card.MaterialCardView;
 
 public class CareProviderDashboardActivity extends AppCompatActivity {
 
-    private static final String TAG = "CareProviderDashboard";
-
     private TextView tvWelcome;
     private TextView tvMedicalId;
-    private TextView tvNoPatients;
-    private RecyclerView rvPatients;
-    private PatientListAdapter adapter;
-    private ExecutorService executor;
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private MaterialCardView cardRegisterPatient;
+    private MaterialCardView cardModifyPatient;
+    private MaterialCardView cardViewHistory;
+
     private UserDatabaseHelper userDbHelper;
 
     @Override
@@ -39,7 +29,6 @@ public class CareProviderDashboardActivity extends AppCompatActivity {
         setContentView(R.layout.activity_care_provider_dashboard);
 
         userDbHelper = UserDatabaseHelper.getInstance(this);
-        executor = Executors.newSingleThreadExecutor();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -49,64 +38,65 @@ public class CareProviderDashboardActivity extends AppCompatActivity {
         }
 
         initializeViews();
-        loadProviderInfo();
-        loadPatients();
+        setupWelcomeCard();
+        setupClickListeners();
     }
 
     private void initializeViews() {
         tvWelcome = findViewById(R.id.tvWelcome);
         tvMedicalId = findViewById(R.id.tvMedicalId);
-        tvNoPatients = findViewById(R.id.tvNoPatients);
-        rvPatients = findViewById(R.id.rvPatients);
-
-        rvPatients.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new PatientListAdapter(patientEmail -> {
-            // On patient tap: set as current user and open ResponsesViewerActivity
-            DatabaseHelper.setCurrentUserEmail(patientEmail);
-            Intent intent = new Intent(this, ResponsesViewerActivity.class);
-            intent.putExtra("patient_email", patientEmail);
-            startActivity(intent);
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
-        });
-        rvPatients.setAdapter(adapter);
-
-        // Prepare animation state
-        tvWelcome.setAlpha(0f);
-        tvMedicalId.setAlpha(0f);
-        rvPatients.setAlpha(0f);
-        rvPatients.setTranslationY(50f);
+        cardRegisterPatient = findViewById(R.id.cardRegisterPatient);
+        cardModifyPatient = findViewById(R.id.cardModifyPatient);
+        cardViewHistory = findViewById(R.id.cardViewHistory);
     }
 
-    private void loadProviderInfo() {
+    private void setupWelcomeCard() {
         String email = UserDatabaseHelper.getCurrentUserEmail();
         String name = userDbHelper.getCareProviderName(email);
         String medicalId = userDbHelper.getCareProviderMedicalId(email);
 
-        tvWelcome.setText("Welcome, Dr. " + (name.isEmpty() ? email.split("@")[0] : name) + "!");
-        tvMedicalId.setText("Medical ID: " + medicalId);
+        String displayName = (name == null || name.isEmpty())
+                ? (email != null && email.contains("@")
+                ? email.substring(0, email.indexOf("@"))
+                : "Provider")
+                : name;
 
-        tvWelcome.animate().alpha(1f).setDuration(800)
-                .setInterpolator(new OvershootInterpolator()).start();
-        tvMedicalId.animate().alpha(1f).setDuration(800).setStartDelay(200).start();
+        tvWelcome.setText("Welcome, Dr. " + displayName);
+        tvMedicalId.setText("Medical ID: " + (medicalId == null ? "-" : medicalId));
     }
 
-    private void loadPatients() {
-        executor.execute(() -> {
-            List<String> patientEmails = userDbHelper.getAllPatientEmails();
-            handler.post(() -> {
-                if (patientEmails == null || patientEmails.isEmpty()) {
-                    tvNoPatients.setVisibility(View.VISIBLE);
-                    rvPatients.setVisibility(View.GONE);
-                } else {
-                    tvNoPatients.setVisibility(View.GONE);
-                    rvPatients.setVisibility(View.VISIBLE);
-                    adapter.setPatients(patientEmails);
-                    rvPatients.animate().alpha(1f).translationY(0f)
-                            .setDuration(500).setStartDelay(300)
-                            .setInterpolator(new OvershootInterpolator()).start();
-                }
-            });
+    private void setupClickListeners() {
+        cardRegisterPatient.setOnClickListener(v -> {
+            Intent intent = new Intent(this, RegisterPatientActivity.class);
+            startActivity(intent);
         });
+
+        cardModifyPatient.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ModifyPatientActivity.class);
+            startActivity(intent);
+        });
+
+        cardViewHistory.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ViewHistoryActivity.class);
+            startActivity(intent);
+        });
+
+        View.OnTouchListener cardTouch = (v, event) -> {
+            switch (event.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(80).start();
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(80).start();
+                    break;
+            }
+            return false;
+        };
+
+        cardRegisterPatient.setOnTouchListener(cardTouch);
+        cardModifyPatient.setOnTouchListener(cardTouch);
+        cardViewHistory.setOnTouchListener(cardTouch);
     }
 
     @Override
@@ -139,12 +129,5 @@ public class CareProviderDashboardActivity extends AppCompatActivity {
     public void onBackPressed() {
         Toast.makeText(this, "Use logout to exit", Toast.LENGTH_SHORT).show();
         super.onBackPressed();
-    }
-
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (executor != null) executor.shutdown();
     }
 }

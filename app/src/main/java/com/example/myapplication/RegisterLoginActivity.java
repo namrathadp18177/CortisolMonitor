@@ -434,7 +434,7 @@ public class RegisterLoginActivity extends AppCompatActivity {
         long userId = userDbHelper.registerUser(
                 email, password, dateOfBirth,
                 selectedSex, selectedRace, selectedRelationshipStatus,
-                weightKg, heightM, bmi
+                weightKg, heightM, bmi// no medical conditions from patient mode (for now)
         );
         if (userId > 0) {
             Toast.makeText(this, "Registration successful! Please login.", Toast.LENGTH_LONG).show();

@@ -20,7 +20,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
     // Database info
     private static final String DATABASE_NAME = "UserProfile.db";
-    private static final int DATABASE_VERSION = 2; // bumped from 1 to 2
+    private static final int DATABASE_VERSION = 3;
 
     // Patient table
     private static final String TABLE_USERS = "users";
@@ -44,6 +44,20 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_CP_MEDICAL_ID = "medical_id";
     private static final String COLUMN_CP_EMAIL = "email";
     private static final String COLUMN_CP_PASSWORD = "password";
+
+    // CP patient extra info table
+    private static final String TABLE_CP_PATIENT_INFO = "cp_patient_info";
+
+    // ===== CP Patient Info =====
+
+    public static final String COL_CP_EMAIL = "patient_email";
+    public static final String COL_CP_PROVIDER_MEDICAL_ID = "provider_medical_id";
+    public static final String COL_CP_PATIENT_ID = "patient_id";
+    public static final String COL_CP_NAME = "name";
+    public static final String COL_CP_PHONE = "phone";
+    public static final String COL_CP_RELATIONSHIP = "relationship_status";
+    public static final String COL_CP_MEDICAL_CONDITIONS = "medical_conditions";
+
 
     // Current user session
     private static String currentUserEmail = "";
@@ -99,6 +113,22 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 + ")";
         db.execSQL(CREATE_CARE_PROVIDERS_TABLE);
 
+        db.execSQL(
+                "CREATE TABLE " + TABLE_CP_PATIENT_INFO + " (" +
+                        COL_CP_EMAIL + " TEXT NOT NULL, " +
+                        COL_CP_PROVIDER_MEDICAL_ID + " TEXT NOT NULL, " +
+                        COL_CP_PATIENT_ID + " TEXT NOT NULL, " +
+                        COL_CP_NAME + " TEXT, " +
+                        COL_CP_PHONE + " TEXT, " +
+                        COL_CP_RELATIONSHIP + " TEXT, " +
+                        COL_CP_MEDICAL_CONDITIONS + " TEXT, " +
+                        "PRIMARY KEY(" + COL_CP_EMAIL + ", " + COL_CP_PROVIDER_MEDICAL_ID + ")" +
+                        ");"
+        );
+
+
+
+
         Log.d(TAG, "All tables created successfully");
     }
 
@@ -107,6 +137,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         Log.w(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_CARE_PROVIDERS);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_CP_PATIENT_INFO);
+
         onCreate(db);
     }
 
@@ -423,6 +455,138 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
         return exists;
     }
+    // Get existing cp_patient_info for this email + provider (if any)
+    public Cursor getCpPatientInfo(String email, String providerMedicalId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(
+                TABLE_CP_PATIENT_INFO,
+                null,
+                COL_CP_EMAIL + "=? AND " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
+                new String[]{email, providerMedicalId},
+                null, null, null
+        );
+    }
+
+    // Generate next patient ID for this provider, e.g. CP123-P1, CP123-P2...
+    public String getNextPatientIdForProvider(String providerMedicalId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String prefix = "CP" + providerMedicalId + "-P";
+
+        Cursor cursor = db.rawQuery(
+                "SELECT " + COL_CP_PATIENT_ID +
+                        " FROM " + TABLE_CP_PATIENT_INFO +
+                        " WHERE " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
+                new String[]{providerMedicalId}
+        );
+
+        int max = 0;
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String pid = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PATIENT_ID));
+                if (pid != null && pid.startsWith(prefix)) {
+                    int dashIndex = pid.lastIndexOf("-P");
+                    if (dashIndex != -1 && dashIndex + 2 < pid.length()) {
+                        try {
+                            int num = Integer.parseInt(pid.substring(dashIndex + 2));
+                            if (num > max) max = num;
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+            }
+            cursor.close();
+        }
+        int next = max + 1;
+        return prefix + next;
+    }
+
+    // Insert or update cp_patient_info
+    public void upsertCpPatientInfo(String email,
+                                    String providerMedicalId,
+                                    String patientId,
+                                    String name,
+                                    String phone,
+                                    String relationshipStatus,
+                                    String medicalConditions) {
+
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(COL_CP_EMAIL, email);
+        values.put(COL_CP_PROVIDER_MEDICAL_ID, providerMedicalId);
+        values.put(COL_CP_PATIENT_ID, patientId);
+        values.put(COL_CP_NAME, name);
+        values.put(COL_CP_PHONE, phone);
+        values.put(COL_CP_RELATIONSHIP, relationshipStatus);
+        values.put(COL_CP_MEDICAL_CONDITIONS, medicalConditions);
+
+        int updated = db.update(
+                TABLE_CP_PATIENT_INFO,
+                values,
+                COL_CP_EMAIL + "=? AND " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
+                new String[]{email, providerMedicalId}
+        );
+
+        if (updated == 0) {
+            db.insert(TABLE_CP_PATIENT_INFO, null, values);
+        }
+    }
+
+
+
+
+
+    public static class CpPatientInfo {
+        public final String email;
+        public final String phone;
+        public final String medicalConditions;
+        public final String patientId;
+        public final String name;
+
+        public CpPatientInfo(String email, String phone, String medicalConditions,
+                             String patientId, String name) {
+            this.email = email;
+            this.phone = phone;
+            this.medicalConditions = medicalConditions;
+            this.patientId = patientId;
+            this.name = name;
+        }
+    }
+    public List<CpPatientInfo> getPatientsForProvider(String providerMedicalId) {
+        List<CpPatientInfo> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        Cursor cursor = db.query(
+                TABLE_CP_PATIENT_INFO,
+                null,
+                COL_CP_PROVIDER_MEDICAL_ID + "=?",
+                new String[]{providerMedicalId},
+                null, null,
+                COL_CP_PATIENT_ID + " ASC"
+        );
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                String email = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_EMAIL));
+                String phone = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PHONE));
+                String medicalConditions = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_MEDICAL_CONDITIONS));
+                String patientId = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PATIENT_ID));
+                String name = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_NAME));
+
+                list.add(new CpPatientInfo(email, phone, medicalConditions, patientId, name));
+            } while (cursor.moveToNext());
+            cursor.close();
+        }
+
+        return list;
+    }
+
+
+    // Simple wrapper so Activities can ask if a user exists
+    public boolean checkUserExists(String email) {
+        return isUserRegistered(email);
+    }
+
+
 
 
     public void logAllUsers() {
