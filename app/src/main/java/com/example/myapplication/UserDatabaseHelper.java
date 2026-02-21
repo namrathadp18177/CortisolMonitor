@@ -37,6 +37,15 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_HEIGHT_M = "height_m";
     private static final String COLUMN_BMI = "bmi";
 
+    private static final String COLUMN_CP_ORGANIZATION = "organization";
+    private static final String COLUMN_CP_DESIGNATION = "designation";
+    private static final String COLUMN_CP_DEPARTMENT = "department";
+    private static final String COLUMN_CP_PHONE = "phone";
+    private static final String COLUMN_CP_GENDER = "gender";
+    private static final String COLUMN_CP_DOB = "dob";
+    private static final String COLUMN_CP_ADDRESS = "address";
+
+
     // Care Provider table
     private static final String TABLE_CARE_PROVIDERS = "care_providers";
     private static final String COLUMN_CP_ID = "id";
@@ -109,8 +118,16 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_CP_NAME + " TEXT NOT NULL, "
                 + COLUMN_CP_MEDICAL_ID + " TEXT UNIQUE NOT NULL, "
                 + COLUMN_CP_EMAIL + " TEXT UNIQUE NOT NULL, "
-                + COLUMN_CP_PASSWORD + " TEXT NOT NULL"
+                + COLUMN_CP_PASSWORD + " TEXT NOT NULL, "
+                + COLUMN_CP_ORGANIZATION + " TEXT, "
+                + COLUMN_CP_DESIGNATION + " TEXT, "
+                + COLUMN_CP_DEPARTMENT + " TEXT, "
+                + COLUMN_CP_PHONE + " TEXT, "
+                + COLUMN_CP_GENDER + " TEXT, "
+                + COLUMN_CP_DOB + " TEXT, "
+                + COLUMN_CP_ADDRESS + " TEXT"
                 + ")";
+
         db.execSQL(CREATE_CARE_PROVIDERS_TABLE);
 
         db.execSQL(
@@ -585,6 +602,83 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     public boolean checkUserExists(String email) {
         return isUserRegistered(email);
     }
+
+    public String getCareProviderMedicalIdForPatient(String patientEmail) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(
+                TABLE_CP_PATIENT_INFO,
+                new String[]{COL_CP_PROVIDER_MEDICAL_ID},
+                COL_CP_EMAIL + " = ?",
+                new String[]{patientEmail},
+                null, null, null
+        );
+        String medicalId = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            medicalId = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PROVIDER_MEDICAL_ID));
+            cursor.close();
+        }
+        return medicalId;
+    }
+    public boolean updateUserPassword(String email, String newPassword) {
+        if (email == null || email.isEmpty()) return false;
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("password", newPassword);
+        int rows = db.update("users", values, "email = ?", new String[]{email});
+        return rows > 0;
+    }
+
+    public boolean hasPasswordSet(String email) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(
+                "users",
+                new String[]{"password"},
+                "email = ?",
+                new String[]{email},
+                null, null, null
+        );
+        boolean hasPassword = false;
+        if (c != null && c.moveToFirst()) {
+            String pwd = c.getString(c.getColumnIndexOrThrow("password"));
+            hasPassword = (pwd != null && !pwd.isEmpty());
+            c.close();
+        }
+        return hasPassword;
+    }
+
+
+    public String getCareProviderNameByMedicalId(String medicalId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(
+                TABLE_CARE_PROVIDERS,
+                new String[]{COLUMN_CP_NAME},
+                COLUMN_CP_MEDICAL_ID + " = ?",
+                new String[]{medicalId},
+                null, null, null
+        );
+        String name = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            name = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CP_NAME));
+            cursor.close();
+        }
+        return name;
+    }
+    public boolean isPatientLinkedToAnyProvider(String email) {
+        if (email == null || email.isEmpty()) return false;
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(
+                TABLE_CP_PATIENT_INFO,
+                new String[]{COL_CP_EMAIL},
+                COL_CP_EMAIL + " = ?",
+                new String[]{email},
+                null, null, null
+        );
+        boolean linked = (c != null && c.moveToFirst());
+        if (c != null) c.close();
+        Log.d(TAG, "isPatientLinkedToAnyProvider(" + email + ") = " + linked);
+        return linked;
+    }
+
 
 
 

@@ -43,7 +43,10 @@ public class ModifyPatientActivity extends AppCompatActivity {
                 Intent intent = new Intent(ModifyPatientActivity.this, EditPatientActivity.class);
                 intent.putExtra("patient_email", info.email);
                 intent.putExtra("patient_id", info.patientId);
+                intent.putExtra("user_role", "CARE_PROVIDER");   // NEW
                 startActivity(intent);
+
+
             }
         });
 

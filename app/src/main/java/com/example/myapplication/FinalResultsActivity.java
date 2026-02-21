@@ -497,11 +497,18 @@ public class FinalResultsActivity extends AppCompatActivity {
     }
 
     private void goToMainActivity() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        String role = getIntent().getStringExtra("user_role");
+        Intent intent;
+        if ("CARE_PROVIDER".equals(role)) {
+            intent = new Intent(this, CareProviderDashboardActivity.class);
+        } else {
+            intent = new Intent(this, DashboardActivity.class);
+        }
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
     }
+
 
     @Override
     protected void onDestroy() {

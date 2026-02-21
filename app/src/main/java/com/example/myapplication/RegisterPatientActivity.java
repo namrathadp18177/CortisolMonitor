@@ -212,9 +212,12 @@ public class RegisterPatientActivity extends AppCompatActivity {
 
         Toast.makeText(this, "Patient ID: " + patientId, Toast.LENGTH_LONG).show();
 
-        //UserDatabaseHelper.setCurrentUserEmail(email);
-        Intent intent = new Intent(this, BiomarkerActivty.class);
+// Start biomarker for this patient as CARE_PROVIDER
+        Intent intent = new Intent(this, BiomarkerInstructions.class);
+        intent.putExtra("user_email", email);              // patient’s email
+        intent.putExtra("user_role", "CARE_PROVIDER");     // provider role
         startActivity(intent);
-        finish();
+
+
     }
 }

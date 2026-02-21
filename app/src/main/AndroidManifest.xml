@@ -77,6 +77,12 @@
         <activity
             android:name=".ViewHistoryActivity"
             android:exported="false" />
+        <activity android:name=".AccountDetailsActivity" />
+        <activity android:name=".CareProviderAccountActivity" />
+        <activity android:name=".ActivateAccountActivity" />
+
+
+
 
 
 

@@ -33,6 +33,8 @@ public class DashboardActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private UserDatabaseHelper userDbHelper;
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -93,6 +95,8 @@ public class DashboardActivity extends AppCompatActivity {
         cardBiomarkerConnection1 = findViewById(R.id.cardBiomarkerConnection1);
         cardResults = findViewById(R.id.cardResults);
 
+
+
         // Prepare initial state for animations
         ivAppIcon.setAlpha(0f);
         ivAppIcon.setScaleX(0.8f);
@@ -114,6 +118,8 @@ public class DashboardActivity extends AppCompatActivity {
             firstName = firstName.substring(0, 1).toUpperCase() + firstName.substring(1);
             tvWelcome.setText("Welcome, " + firstName + "!");
         }
+        String patientEmail = UserDatabaseHelper.getCurrentUserEmail();
+
     }
 
     private void setupClickListeners() {
@@ -154,9 +160,11 @@ public class DashboardActivity extends AppCompatActivity {
                 Intent intent = new Intent(DashboardActivity.this, BiomarkerInstructions.class);
                 String userEmail = DatabaseHelper.getCurrentUserEmail();
                 intent.putExtra("user_email", userEmail);
+                intent.putExtra("user_role", "PATIENT");
                 startActivity(intent);
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             }, 250);
+
 
         });
 
@@ -271,10 +279,10 @@ public class DashboardActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
+
         if (id == R.id.action_view_responses) {
             Log.d("DashboardActivity", "View responses menu item clicked");
 
-            // Add animation to menu item selection
             View menuView = findViewById(id);
             if (menuView != null) {
                 ObjectAnimator.ofFloat(menuView, "rotationY", 0f, 360f)
@@ -287,6 +295,22 @@ public class DashboardActivity extends AppCompatActivity {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             return true;
         }
+
+        if (id == R.id.action_account_details) {
+            Intent intent = new Intent(DashboardActivity.this, AccountDetailsActivity.class);
+            startActivity(intent);
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            return true;
+        }
+
+        if (id == R.id.action_logout) {
+            UserDatabaseHelper.setCurrentUserEmail("");
+            Intent intent = new Intent(DashboardActivity.this, MainActivity.class); // your login/start screen
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            return true;
+        }
+
         return super.onOptionsItemSelected(item);
     }
 

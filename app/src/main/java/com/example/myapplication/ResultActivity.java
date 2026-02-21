@@ -119,11 +119,18 @@ public class ResultActivity extends AppCompatActivity {
     }
 
     private void navigateToFinalResults() {
-        Intent intent = new Intent(this, DashboardActivity.class);
+        String role = getIntent().getStringExtra("user_role");
+        Intent intent;
+        if ("CARE_PROVIDER".equals(role)) {
+            intent = new Intent(this, CareProviderDashboardActivity.class);
+        } else {
+            intent = new Intent(this, DashboardActivity.class);
+        }
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
         finish();
     }
+
 
     private void processIntentData(Intent intent) {
         Bundle extras = intent.getExtras();

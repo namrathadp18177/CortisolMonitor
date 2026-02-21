@@ -434,23 +434,37 @@ public class RegisterLoginActivity extends AppCompatActivity {
         long userId = userDbHelper.registerUser(
                 email, password, dateOfBirth,
                 selectedSex, selectedRace, selectedRelationshipStatus,
-                weightKg, heightM, bmi// no medical conditions from patient mode (for now)
+                weightKg, heightM, bmi
         );
+
         if (userId > 0) {
+            // Brand‑new patient registration
             Toast.makeText(this, "Registration successful! Please login.", Toast.LENGTH_LONG).show();
             animateSuccess(btnSubmit);
             isLoginMode = true;
             updateUI();
             etEmail.setText(email);
             etPassword.setText("");
-        } else {
-            if (userDbHelper.isUserRegistered(email)) {
-                Toast.makeText(this, "Email already registered", Toast.LENGTH_SHORT).show();
+        } else if (userId == -1) {
+            // Email already exists
+            if (userDbHelper.isUserRegistered(email)
+                    && userDbHelper.isPatientLinkedToAnyProvider(email)) {
+                // Provider-created patient: send to activation flow
+                Intent intent = new Intent(this, ActivateAccountActivity.class);
+                intent.putExtra("email", email);
+                startActivity(intent);
             } else {
-                Toast.makeText(this, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show();
+                // Normal existing user: just ask them to log in
+                Toast.makeText(this,
+                        "An account with this email already exists. Please log in.",
+                        Toast.LENGTH_LONG).show();
+                animateError(btnSubmit);
             }
+        } else {
+            Toast.makeText(this, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show();
             animateError(btnSubmit);
         }
+
     }
 
     private void clearForm() {

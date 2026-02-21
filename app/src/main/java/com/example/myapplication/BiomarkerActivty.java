@@ -116,12 +116,18 @@ public class BiomarkerActivty extends AppCompatActivity {
 
 
                 // Navigate to Bluetooth connection page, passing email + sample time
+                // get role from the intent that opened BiomarkerActivty
+                String role = getIntent().getStringExtra("user_role");
+
                 Intent intent = new Intent(BiomarkerActivty.this, OutputBluetooth.class);
                 intent.putExtra("user_email", currentUserEmail);
                 intent.putExtra("sample_timestamp", sampleTimestamp);
+                intent.putExtra("user_role", role);   // NEW: forward role
+
                 Toast.makeText(BiomarkerActivty.this,
                         "Email: " + currentUserEmail, Toast.LENGTH_SHORT).show();
                 startActivity(intent);
+
             }
         };
 

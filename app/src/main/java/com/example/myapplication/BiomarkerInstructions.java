@@ -42,7 +42,13 @@ public class BiomarkerInstructions extends AppCompatActivity {
                 // Pass email from previous activity
                 String userEmail = getIntent().getStringExtra("user_email");
                 intent.putExtra("user_email", userEmail);
+
+// forward the role that came into this screen
+                String userRole = getIntent().getStringExtra("user_role");
+                intent.putExtra("user_role", userRole);
+
                 startActivity(intent);
+
             }
         });
 
