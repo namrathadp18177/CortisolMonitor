@@ -91,12 +91,29 @@ public class BiomarkerActivty extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                // Get current user email
-                String currentUserEmail = DatabaseHelper
-                        .getInstance(BiomarkerActivty.this)
-                        .getCurrentUserEmail();
+                // Get role from the intent that opened BiomarkerActivty
+                String role = getIntent().getStringExtra("user_role");
 
-                // Build sample timestamp: today + selected time (or now if not set)
+                // For patient mode → use their own email
+                // For care provider mode → this MUST be the selected patient email
+                String currentUserEmail;
+                if ("CARE_PROVIDER".equals(role)) {
+                    // Patient email must be sent into BiomarkerActivty
+                    currentUserEmail = getIntent().getStringExtra("patient_email");
+                } else {
+                    // Patient mode (existing behavior)
+                    currentUserEmail = DatabaseHelper
+                            .getInstance(BiomarkerActivty.this)
+                            .getCurrentUserEmail();
+                }
+
+                if (currentUserEmail == null || currentUserEmail.isEmpty()) {
+                    Toast.makeText(BiomarkerActivty.this,
+                            "Missing patient email", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                // Build sample timestamp: today + selected time
                 if (selectedHour < 0) {
                     Toast.makeText(BiomarkerActivty.this,
                             "Please select sample time before proceeding",
@@ -104,7 +121,6 @@ public class BiomarkerActivty extends AppCompatActivity {
                     return;
                 }
 
-// Build timestamp
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(System.currentTimeMillis());
                 cal.set(Calendar.HOUR_OF_DAY, selectedHour);
@@ -114,20 +130,13 @@ public class BiomarkerActivty extends AppCompatActivity {
 
                 long sampleTimestamp = cal.getTimeInMillis();
 
-
-                // Navigate to Bluetooth connection page, passing email + sample time
-                // get role from the intent that opened BiomarkerActivty
-                String role = getIntent().getStringExtra("user_role");
-
+                // Navigate to Bluetooth connection page, passing patient email + sample time
                 Intent intent = new Intent(BiomarkerActivty.this, OutputBluetooth.class);
-                intent.putExtra("user_email", currentUserEmail);
+                intent.putExtra("user_email", currentUserEmail);    // patient in CP mode
                 intent.putExtra("sample_timestamp", sampleTimestamp);
-                intent.putExtra("user_role", role);   // NEW: forward role
+                intent.putExtra("user_role", role);
 
-                Toast.makeText(BiomarkerActivty.this,
-                        "Email: " + currentUserEmail, Toast.LENGTH_SHORT).show();
                 startActivity(intent);
-
             }
         };
 

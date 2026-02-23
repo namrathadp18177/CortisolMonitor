@@ -39,16 +39,23 @@ public class BiomarkerInstructions extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(BiomarkerInstructions.this, BiomarkerActivty.class);
-                // Pass email from previous activity
-                String userEmail = getIntent().getStringExtra("user_email");
-                intent.putExtra("user_email", userEmail);
 
-// forward the role that came into this screen
+                // Role and email coming into this screen
                 String userRole = getIntent().getStringExtra("user_role");
+                String userEmail = getIntent().getStringExtra("user_email");
+
                 intent.putExtra("user_role", userRole);
 
-                startActivity(intent);
+                if ("CARE_PROVIDER".equals(userRole)) {
+                    // In care provider mode, user_email here should be the PATIENT email
+                    intent.putExtra("patient_email", userEmail);
+                } else {
+                    // In patient mode, forward their own email (optional, BiomarkerActivty
+                    // also knows how to get the logged-in patient email)
+                    intent.putExtra("user_email", userEmail);
+                }
 
+                startActivity(intent);
             }
         });
 

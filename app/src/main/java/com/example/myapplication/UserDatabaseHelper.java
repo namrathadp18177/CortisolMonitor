@@ -287,9 +287,9 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_BMI, bmi);
         long id = db.insert(TABLE_USERS, null, values);
         if (id > 0) {
-            setCurrentUserEmail(email);
             Log.d(TAG, "User registered successfully with ID: " + id);
-        } else {
+        }
+        else {
             Log.e(TAG, "Failed to register user");
         }
         return id;

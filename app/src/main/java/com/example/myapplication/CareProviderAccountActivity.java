@@ -31,6 +31,8 @@ public class CareProviderAccountActivity extends AppCompatActivity {
 
         db = UserDatabaseHelper.getInstance(this);
         email = UserDatabaseHelper.getCurrentUserEmail();
+        android.util.Log.d("CP_ACCOUNT", "currentUserEmail at My Account = " + email);
+
 
         TextView tvEmail = findViewById(R.id.tvCpEmail);
         etOrganization = findViewById(R.id.etOrganization);

@@ -117,19 +117,17 @@ public class EditPatientActivity extends AppCompatActivity {
             return;
         }
 
-        UserDatabaseHelper.setCurrentUserEmail(patientEmail);
-            Intent intent = new Intent(EditPatientActivity.this, BiomarkerInstructions.class);
+        // Start biomarker flow for this patient in care provider mode
+        Intent intent = new Intent(EditPatientActivity.this, BiomarkerInstructions.class);
 
-            // patient email from ModifyPatientActivity
-            String patientEmail = getIntent().getStringExtra("patient_email");
-            intent.putExtra("user_email", patientEmail);
+        // patient email from ModifyPatientActivity
+        String patientEmail = getIntent().getStringExtra("patient_email");
+        intent.putExtra("user_email", patientEmail);
 
-            // provider role from ModifyPatientActivity
-            String role = getIntent().getStringExtra("user_role");  // should be CARE_PROVIDER
-            intent.putExtra("user_role", role);
+        // provider role from ModifyPatientActivity
+        String role = getIntent().getStringExtra("user_role");  // should be CARE_PROVIDER
+        intent.putExtra("user_role", role);
 
-            startActivity(intent);
-
-
+        startActivity(intent);
     }
 }

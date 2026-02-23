@@ -19,6 +19,15 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.fragment.app.Fragment;
+import java.util.List;
+import java.util.Arrays;
+import androidx.fragment.app.Fragment;
+import java.util.List;
+import java.util.Arrays;
+import java.util.ArrayList;
+
+
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -182,10 +191,7 @@ public class OutputBluetooth extends AppCompatActivity {
         // Initialize database helper using the singleton pattern
         dbHelper = DatabaseHelper.getInstance(this);
 
-        // Set current user email in DatabaseHelper if coming from login
-        if (userEmail != null && !userEmail.isEmpty()) {
-            DatabaseHelper.setCurrentUserEmail(userEmail);
-        }
+
 
         userEmail = getIntent().getStringExtra("user_email");
         graphData = new ArrayList<>();
@@ -419,20 +425,8 @@ public class OutputBluetooth extends AppCompatActivity {
             // 3) Check if we already have a valid connection
             if (hasValidConnection()) {
                 // We have a valid connection, just start data collection
-                Log.i(TAG, "Using existing connection for data collection");
-                started = true;
-                sendTimer(true);
-
-                // Update UI for data collection mode
-                startButton.setEnabled(false);
-                stopButton.setEnabled(true);
-                connectButton.setEnabled(false);
-                settingsButton.setEnabled(true);
-                saveButton.setEnabled(false);
-                showButton.setEnabled(false);
-
-                // Log button states for debugging
-                logButtonStates("data collection started");
+                Log.i(TAG, "Bluetooth ready - showing step overlay");
+                showStepOverlay(); // show steps first, collection starts after step 5
                 return;
             }
 
@@ -472,6 +466,17 @@ public class OutputBluetooth extends AppCompatActivity {
             // DON'T reset connectionEstablished or isConnecting - keep Bluetooth connected
             isReconnecting = false;
         }
+        // Dismiss overlay if showing
+        Fragment overlay = getSupportFragmentManager().findFragmentByTag("step_overlay");
+        if (overlay != null) {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .remove(overlay)
+                    .commit();
+            findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
+        }
+
+
 
         // 2) DON'T close the socket - keep Bluetooth connection alive
         // This prevents the disconnection/reconnection cycle
@@ -491,6 +496,95 @@ public class OutputBluetooth extends AppCompatActivity {
         Toast.makeText(this, "Data collection stopped", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Data collection stopped - Bluetooth connection maintained");
     }
+    private void showStepOverlay() {
+        View container = findViewById(R.id.stepOverlayContainer);
+        if (container == null) {
+            android.util.Log.e("OVERLAY", "stepOverlayContainer not found in layout!");
+            return;
+        }
+        container.setVisibility(View.VISIBLE);
+        android.util.Log.d("OVERLAY", "Container visibility set to VISIBLE: " + container.getVisibility());
+
+        // Step 1 — 5 minute timer
+        StepModel step1 = new StepModel("STEP 01", "Collect Your Saliva",
+                "Place the swab under your tongue for 5 minutes until it feels soaked with saliva.",
+                null, R.drawable.ic_step_collection, true, false);
+        step1.timerDurationMs = 5 * 60 * 1000;
+
+        // Step 5 — 20 minute timer
+        StepModel step5 = new StepModel("STEP 05", "Wait for Processing",
+                "Place the test cartridge on a flat surface and wait 20 minutes to process.",
+                null, R.drawable.ic_step_wait, true, false);
+        step5.timerDurationMs = 20 * 60 * 1000;
+        step5.showMotivation = false;
+
+        // Step 6 — last step, Begin Scan
+        StepModel step6 = new StepModel("STEP 06", "Insert to Analyser",
+                "Insert the cartridge into the analyser to begin reading.",
+                null, R.drawable.ic_step_analyser, false, false);
+
+        List<StepModel> steps = new ArrayList<>(Arrays.asList(
+                step1,
+                new StepModel("STEP 02", "Extract the Sample",
+                        "Insert collector into the tube as shown. Push down to separate saliva.",
+                        null, R.drawable.ic_step_extraction, false, false),
+                new StepModel("STEP 03", "Store Your Sample",
+                        "Want to store your sample for later?",
+                        new ArrayList<>(Arrays.asList(
+                                "Separate the extraction tube",
+                                "Secure with the cap",
+                                "Can freeze at -20C if not used immediately"
+                        )), R.drawable.ic_step_storage, false, true),
+                new StepModel("STEP 04", "Load the Cartridge",
+                        "Flip the tube and squeeze 4-5 drops onto the test cartridge.",
+                        null, R.drawable.ic_step_loading, false, false),
+                step5,
+                step6
+        ));
+
+        StepOverlayFragment fragment = StepOverlayFragment.newInstance(steps);
+        fragment.setStepOverlayListener(new StepOverlayFragment.StepOverlayListener() {
+            @Override
+            public void onOverlayComplete() {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .remove(fragment)
+                        .commit();
+                findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
+
+                // NOW start actual sample collection after step 5
+                started = true;
+                sendTimer(true);
+                startButton.setEnabled(false);
+                stopButton.setEnabled(true);
+                connectButton.setEnabled(false);
+                settingsButton.setEnabled(true);
+                saveButton.setEnabled(false);
+                showButton.setEnabled(false);
+                Log.i(TAG, "Overlay complete - sample collection started");
+            }
+
+
+            @Override
+            public void onStoredForLater() {
+                getSupportFragmentManager()
+                        .beginTransaction()
+                        .remove(fragment)
+                        .commit();
+                findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
+                onClickStop(null);
+            }
+        });
+
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(R.id.stepOverlayContainer, fragment, "step_overlay")
+                .commit();
+    }
+
+
+
+
 
     public void onClickConnect(View v) {
         Log.i(TAG, "Connect button clicked");
@@ -530,7 +624,9 @@ public class OutputBluetooth extends AppCompatActivity {
             if (dataPointsavgd.isEmpty()) {
                 // No new data, just open ResultActivity to show history
                 Intent intent = new Intent(this, ResultActivity.class);
+                String role = getIntent().getStringExtra("user_role");
                 intent.putExtra("user_email", userEmail);
+                intent.putExtra("user_role", role);
                 startActivity(intent);
                 return;
             }
@@ -562,12 +658,16 @@ public class OutputBluetooth extends AppCompatActivity {
 
 
             // Then open ResultActivity
+            String role = getIntent().getStringExtra("user_role");
+
             Intent resultActivity = new Intent(this, ResultActivity.class);
             resultActivity.putExtra("max_value_port0", max0);
             resultActivity.putExtra("max_value_port1", max1);
             resultActivity.putExtra("max_value_port2", max2);
             resultActivity.putExtra("user_email", userEmail);
+            resultActivity.putExtra("user_role", role);   // forward role
             startActivity(resultActivity);
+
 
             Log.i(TAG, "Started ResultActivity with max values");
         } catch (Exception e) {

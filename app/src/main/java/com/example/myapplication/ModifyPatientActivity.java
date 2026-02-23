@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ModifyPatientActivity extends AppCompatActivity {
@@ -17,6 +18,10 @@ public class ModifyPatientActivity extends AppCompatActivity {
     private UserDatabaseHelper dbHelper;
     private String currentCpEmail;
     private String providerMedicalId;
+
+    // keep adapter and list as fields so we can refresh
+    private PatientCardAdapter adapter;
+    private final List<UserDatabaseHelper.CpPatientInfo> patients = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,28 +34,40 @@ public class ModifyPatientActivity extends AppCompatActivity {
 
         rvPatients = findViewById(R.id.rvPatients);
 
+        // set up adapter once
+        adapter = new PatientCardAdapter(patients, new PatientCardAdapter.OnPatientClickListener() {
+            @Override
+            public void onPatientClick(UserDatabaseHelper.CpPatientInfo info) {
+                Intent intent = new Intent(ModifyPatientActivity.this, EditPatientActivity.class);
+                intent.putExtra("patient_email", info.email);
+                intent.putExtra("patient_id", info.patientId);
+                intent.putExtra("user_role", "CARE_PROVIDER");
+                startActivity(intent);
+            }
+        });
+        rvPatients.setAdapter(adapter);
+
+        // initial load
+        loadPatients();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // reload every time we come back to this screen
         loadPatients();
     }
 
     private void loadPatients() {
-        List<UserDatabaseHelper.CpPatientInfo> patients =
+        // query fresh list from DB
+        List<UserDatabaseHelper.CpPatientInfo> latest =
                 dbHelper.getPatientsForProvider(providerMedicalId);
 
-        PatientCardAdapter adapter = new PatientCardAdapter(patients, new PatientCardAdapter.OnPatientClickListener() {
-            @Override
-            public void onPatientClick(UserDatabaseHelper.CpPatientInfo info) {
-                // Open EditPatientActivity with patientId and email
-                Intent intent = new Intent(ModifyPatientActivity.this, EditPatientActivity.class);
-                intent.putExtra("patient_email", info.email);
-                intent.putExtra("patient_id", info.patientId);
-                intent.putExtra("user_role", "CARE_PROVIDER");   // NEW
-                startActivity(intent);
-
-
-            }
-        });
-
-        rvPatients.setAdapter(adapter);
+        patients.clear();
+        if (latest != null) {
+            patients.addAll(latest);
+        }
+        adapter.notifyDataSetChanged();
     }
 
     // Adapter class
