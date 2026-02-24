@@ -13,7 +13,10 @@
     <!-- Text colors -->
     <color name="text_primary">#263238</color>
     <color name="text_secondary">#546E7A</color>
-    
+
+    <color name="divider">#1F000000</color>
+
+
     <!-- Accent color -->
     <color name="accent">#FFC107</color>
     

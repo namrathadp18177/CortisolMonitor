@@ -1,6 +1,12 @@
 package com.example.myapplication;
 
+import android.app.DatePickerDialog;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.content.ContentValues;
 import android.os.Bundle;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -8,16 +14,17 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.content.ContentValues;
+import java.util.Calendar;
+import java.util.Locale;
 
 public class CareProviderAccountActivity extends AppCompatActivity {
 
     private UserDatabaseHelper db;
     private String email;
+
     private EditText etOrganization, etDesignation, etDepartment,
-            etPhone, etGender, etDob, etAddress;
+            etPhone, etDob, etAddress;
+    private AutoCompleteTextView actvGender;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,22 +40,44 @@ public class CareProviderAccountActivity extends AppCompatActivity {
         email = UserDatabaseHelper.getCurrentUserEmail();
         android.util.Log.d("CP_ACCOUNT", "currentUserEmail at My Account = " + email);
 
-
         TextView tvEmail = findViewById(R.id.tvCpEmail);
         etOrganization = findViewById(R.id.etOrganization);
         etDesignation = findViewById(R.id.etDesignation);
         etDepartment = findViewById(R.id.etDepartment);
         etPhone = findViewById(R.id.etPhone);
-        etGender = findViewById(R.id.etGender);
-        etDob = findViewById(R.id.etDob);
+        actvGender = findViewById(R.id.actvGender);
+        etDob = findViewById(R.id.etDateOfBirth);
         etAddress = findViewById(R.id.etAddress);
         Button btnSave = findViewById(R.id.btnSaveCp);
 
         tvEmail.setText(email != null ? email : "N/A");
 
+        setupGenderDropdown();
+        setupDobPicker();
         loadExistingData();
 
         btnSave.setOnClickListener(v -> saveData());
+    }
+
+    private void setupGenderDropdown() {
+        String[] genderOptions = {"Male", "Female", "Non-binary", "Prefer not to say"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                genderOptions
+        );
+        actvGender.setAdapter(adapter);
+    }
+
+    private void setupDobPicker() {
+        etDob.setOnClickListener(v -> {
+            Calendar cal = Calendar.getInstance();
+            new DatePickerDialog(this, (view, year, month, day) -> {
+                String date = String.format(Locale.US, "%02d/%02d/%04d", month + 1, day, year);
+                etDob.setText(date);
+            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH))
+                    .show();
+        });
     }
 
     private void loadExistingData() {
@@ -67,7 +96,7 @@ public class CareProviderAccountActivity extends AppCompatActivity {
             etDesignation.setText(c.getString(c.getColumnIndexOrThrow("designation")));
             etDepartment.setText(c.getString(c.getColumnIndexOrThrow("department")));
             etPhone.setText(c.getString(c.getColumnIndexOrThrow("phone")));
-            etGender.setText(c.getString(c.getColumnIndexOrThrow("gender")));
+            actvGender.setText(c.getString(c.getColumnIndexOrThrow("gender")), false);
             etDob.setText(c.getString(c.getColumnIndexOrThrow("dob")));
             etAddress.setText(c.getString(c.getColumnIndexOrThrow("address")));
             c.close();
@@ -86,7 +115,7 @@ public class CareProviderAccountActivity extends AppCompatActivity {
         values.put("designation", etDesignation.getText().toString().trim());
         values.put("department", etDepartment.getText().toString().trim());
         values.put("phone", etPhone.getText().toString().trim());
-        values.put("gender", etGender.getText().toString().trim());
+        values.put("gender", actvGender.getText().toString().trim());
         values.put("dob", etDob.getText().toString().trim());
         values.put("address", etAddress.getText().toString().trim());
 

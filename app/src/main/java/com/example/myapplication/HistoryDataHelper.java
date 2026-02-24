@@ -62,6 +62,25 @@ public class HistoryDataHelper {
                         if (cpCursor != null) cpCursor.close();
                     }
 
+                    // Fallback for patient-mode users (no CP name):
+                    // use first part of email as display name
+                    if (name == null || name.isEmpty()) {
+                        String localPart = email;
+                        int atIndex = email.indexOf('@');
+                        if (atIndex > 0) {
+                            localPart = email.substring(0, atIndex);
+                        }
+                        // make it look nicer: replace '.' and '_' with spaces
+                        localPart = localPart.replace('.', ' ').replace('_', ' ');
+
+                        if (!localPart.isEmpty()) {
+                            // capitalize first character (simple)
+                            name = localPart.substring(0, 1).toUpperCase() + localPart.substring(1);
+                        } else {
+                            name = "(no name)";
+                        }
+                    }
+
                     // Get latest biomarker experiment for this email (may be none)
                     double latestCortisol = -1;
                     try {

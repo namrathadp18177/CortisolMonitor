@@ -79,6 +79,19 @@ public class StepOverlayFragment extends Fragment {
         tvTitle.setText(step.title);
         tvDesc.setText(step.description);
 
+        // enlarge only step 6 image a bit
+        // index is zero-based, so step 6 => index 5
+        if (index == 5) {
+            float density = getResources().getDisplayMetrics().density;
+            int largeWidth = (int) (260 * density);
+            int largeHeight = (int) (260 * density);
+            ViewGroup.LayoutParams lp = imgStep.getLayoutParams();
+            lp.width = largeWidth;
+            lp.height = largeHeight;
+            imgStep.setLayoutParams(lp);
+            imgStep.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        }
+
         // Bullet points
         if (step.bulletPoints != null && !step.bulletPoints.isEmpty()) {
             tvBullets.setVisibility(View.VISIBLE);
@@ -92,6 +105,7 @@ public class StepOverlayFragment extends Fragment {
         }
 
         // Timer steps
+        // Timer steps
         if (step.hasTimer) {
             tvTimer.setVisibility(View.VISIBLE);
             btnSkip.setVisibility(View.VISIBLE);
@@ -102,14 +116,36 @@ public class StepOverlayFragment extends Fragment {
                 tvMotivation.setVisibility(View.GONE);
             }
 
-            btnNext.setEnabled(false);
-            btnNext.setAlpha(0.4f);
+            Button btnStartTimer = view.findViewById(R.id.btnStartTimer);
 
-            startCountdown(step, tvTimer, tvMotivation, btnNext, btnSkip, view);
+            // Steps with manual start: step 1 (index 0) and step 5 (index 4)
+            if (index == 0 || index == 4) {
+                btnStartTimer.setVisibility(View.VISIBLE);
+                btnNext.setEnabled(false);
+                btnNext.setAlpha(0.4f);
+
+                // optional: show initial full time
+                long minutes = step.timerDurationMs / (60 * 1000);
+                tvTimer.setText(String.format(Locale.getDefault(), "%02d:00", minutes));
+
+                btnStartTimer.setOnClickListener(v -> {
+                    btnStartTimer.setVisibility(View.GONE);
+                    startCountdown(step, tvTimer, tvMotivation, btnNext, btnSkip, view);
+                });
+            } else {
+                // any other timer step auto-starts as before
+                btnStartTimer.setVisibility(View.GONE);
+                btnNext.setEnabled(false);
+                btnNext.setAlpha(0.4f);
+                startCountdown(step, tvTimer, tvMotivation, btnNext, btnSkip, view);
+            }
         } else {
             tvTimer.setVisibility(View.GONE);
             tvMotivation.setVisibility(View.GONE);
             btnSkip.setVisibility(View.GONE);
+
+            Button btnStartTimer = view.findViewById(R.id.btnStartTimer);
+            btnStartTimer.setVisibility(View.GONE);
 
             btnNext.setEnabled(true);
             btnNext.setAlpha(1.0f);
@@ -162,7 +198,6 @@ public class StepOverlayFragment extends Fragment {
             btnSkip.setVisibility(View.GONE);
             advanceToNextStep(view);
         });
-
 
         // Store It (Step 3 only)
         btnStoreIt.setOnClickListener(v -> {

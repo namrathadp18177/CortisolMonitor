@@ -80,6 +80,8 @@
         <activity android:name=".AccountDetailsActivity" />
         <activity android:name=".CareProviderAccountActivity" />
         <activity android:name=".ActivateAccountActivity" />
+        <activity android:name=".PatientHistoryDetailActivity" />
+
 
 
 

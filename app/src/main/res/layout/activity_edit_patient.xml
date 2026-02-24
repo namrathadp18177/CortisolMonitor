@@ -4,94 +4,219 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp"
     android:background="@color/background"
+    android:fillViewport="true"
     tools:context=".EditPatientActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <TextView
-            android:id="@+id/tvTitle"
+        <!-- Header -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Edit Patient"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:layout_marginBottom="16dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
 
-        <!-- Name -->
-        <com.google.android.material.textfield.TextInputLayout
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_person"
+                app:tint="@color/colorPrimary"
+                android:layout_marginEnd="12dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Edit Patient"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Update patient information"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary" />
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Personal Info Card -->
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            style="@style/Widget.App.TextInputLayout">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etName"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Full name"/>
-        </com.google.android.material.textfield.TextInputLayout>
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <!-- Phone -->
-        <com.google.android.material.textfield.TextInputLayout
+                <!-- Section Label -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Personal Information"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimary"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Full Name -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:startIconDrawable="@drawable/ic_person"
+                    style="@style/Widget.App.TextInputLayout">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Full Name"
+                        android:inputType="textPersonName"
+                        android:imeOptions="actionNext" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Phone -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:startIconDrawable="@drawable/ic_phone"
+                    style="@style/Widget.App.TextInputLayout">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etPhone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Phone Number"
+                        android:inputType="phone"
+                        android:imeOptions="actionNext" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Relationship -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:startIconDrawable="@drawable/ic_people"
+                    style="@style/Widget.App.TextInputLayout">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etRelationship"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Relationship Status"
+                        android:imeOptions="actionNext" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Medical Info Card -->
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            style="@style/Widget.App.TextInputLayout">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etPhone"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/white">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Phone number"
-                android:inputType="phone"/>
-        </com.google.android.material.textfield.TextInputLayout>
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <!-- Relationship -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            style="@style/Widget.App.TextInputLayout">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etRelationship"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Relationship status"/>
-        </com.google.android.material.textfield.TextInputLayout>
+                <!-- Section Label -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Medical Information"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimary"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="12dp" />
 
-        <!-- Medical conditions -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            style="@style/Widget.App.TextInputLayout">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etMedicalConditions"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Medical conditions"
-                android:inputType="textMultiLine"
-                android:minLines="2"/>
-        </com.google.android.material.textfield.TextInputLayout>
+                <!-- Medical Conditions -->
+                <!-- Medical Conditions -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilMedicalConditions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:startIconDrawable="@drawable/ic_medical"
+                    app:endIconMode="custom"
+                    app:endIconDrawable="@drawable/ic_add"
+                    app:endIconContentDescription="Add condition"
+                    style="@style/Widget.App.TextInputLayout">
 
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etMedicalConditions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Add a condition"
+                        android:imeOptions="actionDone"
+                        android:inputType="textCapSentences" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Bullet list display -->
+                <LinearLayout
+                    android:id="@+id/llConditionsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="4dp"/>
+
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Save Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Save changes"
+            android:layout_height="52dp"
+            android:text="Save Changes"
+            android:textSize="15sp"
+            android:textStyle="bold"
             style="@style/Widget.App.Button"
-            android:layout_marginBottom="12dp"/>
+            android:layout_marginBottom="12dp"
+            app:cornerRadius="12dp" />
 
+        <!-- Perform Test Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPerformTest"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="52dp"
             android:text="Perform Test"
-            style="@style/Widget.App.Button" />
+            android:textSize="15sp"
+            android:textStyle="bold"
+            style="@style/Widget.App.Button.Outlined"
+            app:cornerRadius="12dp" />
 
     </LinearLayout>
 </ScrollView>

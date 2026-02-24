@@ -100,7 +100,7 @@
                             android:id="@+id/etDob"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Date of Birth (MM/dd/yyyy)"
+                            android:hint="Date of Birth (mm/dd/yyyy)"
                             android:inputType="date"
                             android:focusable="false"
                             android:clickable="true"/>
