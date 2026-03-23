@@ -26,6 +26,9 @@ import androidx.fragment.app.Fragment;
 import java.util.List;
 import java.util.Arrays;
 import java.util.ArrayList;
+import android.view.MotionEvent;
+import android.widget.FrameLayout;
+
 
 
 
@@ -64,7 +67,11 @@ public class OutputBluetooth extends AppCompatActivity {
     private static final int REQUEST_BLUETOOTH_PERMISSION = 1;
     private static final int REQUEST_LOCATION_PERMISSION = 2;
     private static final int REQUEST_STORAGE_PERMISSION = 3;
+    private static final int REQUEST_QR_SCAN = 11;
+
     private boolean autoReconnectEnabled = true;
+
+
     private boolean isReconnecting = false;
     private final int REFRESH_THRESHOLD = 1500;
     private boolean isRefreshing = false;
@@ -101,6 +108,7 @@ public class OutputBluetooth extends AppCompatActivity {
     private final ArrayList<Double> dataPoints1Unclean = new ArrayList<>();
     private final ArrayList<Double> dataPoints2Unclean = new ArrayList<>();
     private final ArrayList<Double> dataPointsavgdUnclean = new ArrayList<>();
+    private final ArrayList<Double> validCortisolList = new ArrayList<>();
 
     // Bluetooth fields
     private final BluetoothAdapter mBA = BluetoothAdapter.getDefaultAdapter();
@@ -117,6 +125,8 @@ public class OutputBluetooth extends AppCompatActivity {
     private int movingAvgValue = 4;
     private int ADCbits = 15;
     private boolean[] analogPort = {true, true, true, true};
+    private boolean navigatingToResults = false;
+
 
     // State
     private int backCount = 0;
@@ -134,6 +144,41 @@ public class OutputBluetooth extends AppCompatActivity {
     private ScheduledExecutorService scheduler;
     private int errorCount = 0;
     private static final int MAX_ERRORS = 5;
+
+
+    private static final long DEV_PATTERN_TIMEOUT_MS = 6000L;
+
+    // 0=TL, 1=TR, 2=BR, 3=BL
+    private final int[] devPattern = {0, 1, 2, 3};
+    private int devIndex = 0;
+    private long patternStartTime = 0L;
+
+    // Shared live data for Developer Mode
+    public static final ArrayList<Double> devModeXAxis = new ArrayList<>();
+    public static final ArrayList<Double> devModeYAxis = new ArrayList<>();
+    public static volatile boolean devModeActive = false;
+    public static volatile int devSamplesPerSecond = 5;
+    public static volatile int devMovingAvgValue = 4;
+    public static volatile double devDurationOfExp = 600.0;
+    public static volatile boolean[] devAnalogPort = {true, true, true, true};
+    private String tubeId;
+    private String cartridgeId;
+    private String sampleTime;
+    private String deviceAddress;
+
+    private String userRole;
+
+
+
+    public static final ArrayList<Double> devModeAvgY = new ArrayList<>();  // add this
+
+    // replace
+    private static final int BATCHSIZE = 1000;
+    // with
+    private static final int MAX_SAMPLES = 100;
+
+
+
 
     // Handler to pass data back to UI thread
     private final Handler myHandler = new Handler() {
@@ -161,30 +206,49 @@ public class OutputBluetooth extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_output_bluetooth);
+        FrameLayout root = findViewById(R.id.rootFrameLayout);
+        View devTapOverlay = findViewById(R.id.devTapOverlay);
+        devTapOverlay.setOnTouchListener((v, event) -> {
+            Log.d(TAG, "onTouch action=" + event.getAction());
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {  // change UP to DOWN
+                handleDeveloperPattern(event, v.getWidth(), v.getHeight());
+            }
+            return false;
+        });
+        Intent intent = getIntent();
+        tubeId        = intent.getStringExtra("tube_id");
+        cartridgeId   = intent.getStringExtra("cartridge_id");
+        sampleTime    = intent.getStringExtra("sample_time");
+        deviceAddress = intent.getStringExtra("device_address");
+        userEmail     = intent.getStringExtra("user_email");
+        userRole      = intent.getStringExtra("user_role");
+
+
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         sampleTimestamp = getIntent().getLongExtra("sample_timestamp", -1);
 
         initializeViews();
         checkPermissions();
         loadSettings();
-        GraphView graph = findViewById(R.id.graphViewBL);
-        Viewport vp = graph.getViewport();
-
-// Ensure the whole graph is visible and scrollable/zoomable as needed
-        vp.setScrollable(true);
-        vp.setScalable(true);
+//        GraphView graph = findViewById(R.id.graphViewBL);
+//        Viewport vp = graph.getViewport();
+//
+//// Ensure the whole graph is visible and scrollable/zoomable as needed
+//        vp.setScrollable(true);
+//        vp.setScalable(true);
 
 // Avoid x‑axis labels overlapping
-        GridLabelRenderer gridLabel = graph.getGridLabelRenderer();
-        gridLabel.setNumHorizontalLabels(4);   // fewer X labels
-        gridLabel.setNumVerticalLabels(5);     // cleaner Y labels
+//        GridLabelRenderer gridLabel = graph.getGridLabelRenderer();
+//        gridLabel.setNumHorizontalLabels(4);   // fewer X labels
+//        gridLabel.setNumVerticalLabels(5);     // cleaner Y labels
 
 // Add some padding around labels so they are not cut off
-        gridLabel.setPadding(16);
-        gridLabel.setHorizontalLabelsAngle(0); // keep them horizontal; use 45 if still crowded
-
-// Optional: set label text size a bit smaller
-        gridLabel.setTextSize(28f); // default is ~30f, reduce if still clipped
+//        gridLabel.setPadding(16);
+//        gridLabel.setHorizontalLabelsAngle(0); // keep them horizontal; use 45 if still crowded
+//
+//// Optional: set label text size a bit smaller
+//        gridLabel.setTextSize(28f); // default is ~30f, reduce if still clipped
 
 
 
@@ -201,22 +265,43 @@ public class OutputBluetooth extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        initializeBluetooth();
+        navigatingToResults = false;
+        if (mBA == null || !mBA.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 0);
+        } else {
+            // BT is on — enable connect button so user can tap it
+            connectButton.setEnabled(true);
+        }
     }
+
+
+
+
 
     @Override
     protected void onStop() {
         super.onStop();
-        shutdownScheduler();
-        if (started) sendTimer(false);
+        if (!devModeActive && !navigatingToResults) { // ← ADD !navigatingToResults
+            shutdownScheduler();
+            if (started) sendTimer(false);
+        }
     }
+
+
+
+
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        shutdownScheduler();
-        if (started) sendTimer(false);
+        if (!devModeActive && !navigatingToResults) {
+            shutdownScheduler();
+            if (started) sendTimer(false);
+        }
     }
+
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -240,10 +325,8 @@ public class OutputBluetooth extends AppCompatActivity {
                         !java.util.Arrays.equals(newAnalogPort, analogPort);
 
                 if (settingsChanged && hasExistingData()) {
-                    // Show warning about existing data
                     showSettingsChangeWarning(newSamplesPerSecond, newMovingAvgValue, newDurationOfExp, newAnalogPort);
                 } else {
-                    // No existing data or no changes, apply settings directly
                     applyNewSettings(newSamplesPerSecond, newMovingAvgValue, newDurationOfExp, newAnalogPort);
                 }
 
@@ -251,19 +334,37 @@ public class OutputBluetooth extends AppCompatActivity {
                 Log.e(TAG, "Error processing settings result", e);
                 Toast.makeText(this, "Error updating settings", Toast.LENGTH_SHORT).show();
             }
+
         } else if (requestCode == 0) {
             // Bluetooth enable request result
             if (resultCode == RESULT_OK) {
                 Toast.makeText(this, "Bluetooth enabled", Toast.LENGTH_SHORT).show();
-                // Wait a bit for Bluetooth to fully initialize
                 new Handler().postDelayed(() -> {
                     initializeBluetooth();
                 }, 1000);
             } else {
                 Toast.makeText(this, "Bluetooth is required for this app", Toast.LENGTH_LONG).show();
             }
+
+        } else if (requestCode == REQUEST_QR_SCAN
+                && resultCode == RESULT_OK
+                && data != null) {
+            // QR scan result
+            String address = data.getStringExtra("device_address");
+            if (address != null) {
+                Toast.makeText(this, "QR scanned! Connecting...",
+                        Toast.LENGTH_SHORT).show();
+                synchronized (connectionLock) {
+                    myDevice = mBA.getRemoteDevice(address);
+                    isConnecting = true;
+                    connectionEstablished = false;
+                    startButton.setEnabled(false);
+                }
+                new ConnectThread(myDevice).start();
+            }
         }
     }
+
 
     private void showSettingsChangeWarning(int newSps, int newAvg, double newDuration, boolean[] newPorts) {
         androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
@@ -290,18 +391,8 @@ public class OutputBluetooth extends AppCompatActivity {
                 .show();
     }
 
-    private void applyNewSettings(int newSps, int newAvg, double newDuration, boolean[] newPorts) {
-        samplesPerSecond = newSps;
-        movingAvgValue = newAvg;
-        durationOfExp = newDuration;
-        analogPort = newPorts;
 
-        saveSettings();
-        resetGraph();
 
-        Log.i(TAG, "Settings updated - SPS: " + samplesPerSecond +
-                ", MovingAvg: " + movingAvgValue + ", Duration: " + durationOfExp);
-    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -424,9 +515,15 @@ public class OutputBluetooth extends AppCompatActivity {
 
             // 3) Check if we already have a valid connection
             if (hasValidConnection()) {
-                // We have a valid connection, just start data collection
-                Log.i(TAG, "Bluetooth ready - showing step overlay");
-                showStepOverlay(); // show steps first, collection starts after step 5
+                Log.i(TAG, "Bluetooth ready - starting data collection directly");
+
+                started = true;
+                sendTimer(true);
+
+                startButton.setEnabled(false);
+                connectButton.setEnabled(false);
+                showButton.setEnabled(false);
+
                 return;
             }
 
@@ -452,7 +549,7 @@ public class OutputBluetooth extends AppCompatActivity {
             // 6) UI state will be enabled in ConnectThread on success.
             //    For now disable Start to prevent double-tap:
             startButton.setEnabled(false);
-            stopButton.setEnabled(false);
+//            stopButton.setEnabled(false);
         }
     }
 
@@ -482,16 +579,16 @@ public class OutputBluetooth extends AppCompatActivity {
         // This prevents the disconnection/reconnection cycle
 
         // 3) Update UI for stopped state but keep connection
-        stopButton.setEnabled(false);
+//        stopButton.setEnabled(false);
         startButton.setEnabled(true);
         connectButton.setEnabled(true);
-        settingsButton.setEnabled(true);
+        // settingsButton.setEnabled(true);
 
         // Update save/show buttons based on data availability
         updateDataDependentButtons();
 
         // Log button states for debugging
-        logButtonStates("after stop (connection maintained)");
+        // logButtonStates("after stop (connection maintained)");
 
         Toast.makeText(this, "Data collection stopped", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Data collection stopped - Bluetooth connection maintained");
@@ -521,8 +618,8 @@ public class OutputBluetooth extends AppCompatActivity {
 
 
 // Step 6 — Final step
-        StepModel step6 = new StepModel("STEP 06", "Insert into Machine",
-                "After waiting 20 minutes, gently insert the test strip into the machine to see begin reading.",
+        StepModel step6 = new StepModel("STEP 06", "Insert into Analyser",
+                "After waiting 20 minutes, gently insert the test strip into the Analyser to see begin reading.",
                 null, R.drawable.ic_step_analyser, false, false);
 
 
@@ -562,10 +659,10 @@ public class OutputBluetooth extends AppCompatActivity {
                 started = true;
                 sendTimer(true);
                 startButton.setEnabled(false);
-                stopButton.setEnabled(true);
+//                stopButton.setEnabled(true);
                 connectButton.setEnabled(false);
-                settingsButton.setEnabled(true);
-                saveButton.setEnabled(false);
+                // settingsButton.setEnabled(true);
+//                saveButton.setEnabled(false);
                 showButton.setEnabled(false);
                 Log.i(TAG, "Overlay complete - sample collection started");
             }
@@ -596,15 +693,11 @@ public class OutputBluetooth extends AppCompatActivity {
         Log.i(TAG, "Connect button clicked");
 
         synchronized (connectionLock) {
-            // Prevent multiple connection attempts
             if (isConnecting) {
-                Log.w(TAG, "Connection already in progress");
                 Toast.makeText(this, "Connection already in progress...", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // manual reconnect
-            Log.i(TAG, "Starting manual reconnection");
             shutdownScheduler();
             connectionEstablished = false;
             isReconnecting = false;
@@ -612,23 +705,30 @@ public class OutputBluetooth extends AppCompatActivity {
             if (mySocket != null) {
                 try {
                     mySocket.close();
-                    Log.d(TAG, "Closed existing socket for reconnection");
-                } catch (IOException ignored) {
-                }
+                } catch (IOException ignored) {}
                 mySocket = null;
             }
             is = null;
             os = null;
         }
 
-        Toast.makeText(this, "Reconnecting...", Toast.LENGTH_SHORT).show();
-        initializeBluetooth();
+        // Directly show device picker instead of initializeBluetooth()
+        searchForDevice();
     }
+
+    public void onClickQRConnect(View v) {
+        Intent intent = new Intent(this, QRScanActivity.class);
+        startActivityForResult(intent, REQUEST_QR_SCAN);
+    }
+
+
     public void onClickShow(View v) {
+        navigatingToResults = true;
         Log.i(TAG, "Show button clicked");
         try {
             if (dataPointsavgd.isEmpty()) {
                 // No new data, just open ResultActivity to show history
+                navigatingToResults = true;
                 Intent intent = new Intent(this, ResultActivity.class);
                 String role = getIntent().getStringExtra("user_role");
                 intent.putExtra("user_email", userEmail);
@@ -638,27 +738,29 @@ public class OutputBluetooth extends AppCompatActivity {
             }
 
             // Calculate max values
+            double max1 = findMaxbyAvg(dataPoints1);
             double max = findMaxbyAvg(dataPointsavgd);
             double max0 = findMaxbyAvg(dataPoints0);
-            double max1 = findMaxbyAvg(dataPoints1);
+            double finalCortisol = calculateFinalExperimentCortisol();
             double max2 = findMaxbyAvg(dataPoints2);
 
             Log.i(TAG, "Calculated max values: port0=" + max0 + ", port1=" + max1 + ", port2=" + max2);
 
             // SAVE TO DATABASE FIRST
-            
+
             if (currentExperimentId == -1) {
                 // Create new experiment
                 long tsToSave = (sampleTimestamp > 0) ? sampleTimestamp : System.currentTimeMillis();
                 currentExperimentId = dbHelper.createBiomarkerExperiment(
                         userEmail, "Bluetooth", samplesPerSecond,
-                        movingAvgValue, durationOfExp, max1, dataSize, tsToSave);
+                        movingAvgValue, durationOfExp, finalCortisol, dataSize, tsToSave, tubeId,             // from wizard Intent
+                        cartridgeId);
                 dbHelper.addBiomarkerDataBatch(currentExperimentId, xaxis,
                         dataPoints0, dataPoints1, dataPoints2, dataPointsavgd);
                 Log.i(TAG, "New experiment saved with ID: " + currentExperimentId);
             } else {
                 // Update existing experiment
-                dbHelper.updateBiomarkerExperimentMaxValue(currentExperimentId, max1);  // ✅ Also change this
+                dbHelper.updateBiomarkerExperimentMaxValue(currentExperimentId, finalCortisol);  // ✅ Also change this
                 Log.i(TAG, "Updated experiment " + currentExperimentId + " with max value: " + max1);
             }
 
@@ -668,7 +770,7 @@ public class OutputBluetooth extends AppCompatActivity {
 
             Intent resultActivity = new Intent(this, ResultActivity.class);
             resultActivity.putExtra("max_value_port0", max0);
-            resultActivity.putExtra("max_value_port1", max1);
+            resultActivity.putExtra("final_cortisol", finalCortisol);
             resultActivity.putExtra("max_value_port2", max2);
             resultActivity.putExtra("user_email", userEmail);
             resultActivity.putExtra("user_role", role);   // forward role
@@ -701,11 +803,11 @@ public class OutputBluetooth extends AppCompatActivity {
 ////            return;
 ////        }
 //
-////        if (dataPointsavgd.isEmpty()) {
-////            Log.w(TAG, "No data to show - dataPointsavgd is empty");
-////            Toast.makeText(this, "No data to show", Toast.LENGTH_SHORT).show();
-////            return;
-////        }
+    ////        if (dataPointsavgd.isEmpty()) {
+    ////            Log.w(TAG, "No data to show - dataPointsavgd is empty");
+    ////            Toast.makeText(this, "No data to show", Toast.LENGTH_SHORT).show();
+    ////            return;
+    ////        }
 //
 //        try {
 //            if (!dataPointsavgd.isEmpty()) {
@@ -753,6 +855,7 @@ public class OutputBluetooth extends AppCompatActivity {
 
                     // Wait a moment for stop to complete, then show results
                     new android.os.Handler().postDelayed(() -> {
+                        navigatingToResults = true;
                         // Call show again now that collection is stopped
                         onClickShow(null);
                     }, 500); // 500ms delay to ensure stop completes
@@ -1367,25 +1470,25 @@ public class OutputBluetooth extends AppCompatActivity {
     // Add new method to save data to the database
     private void saveToDatabaseHelper() {
         try {
-            long tsToSave;
-            if (sampleTimestamp > 0) {
-                tsToSave = sampleTimestamp;
-            } else {
-                tsToSave = System.currentTimeMillis();
-            }
-            // Create a new experiment entry
+            long tsToSave = (sampleTimestamp > 0)
+                    ? sampleTimestamp
+                    : System.currentTimeMillis();
+
+            double finalCortisol = calculateFinalExperimentCortisol();
+
             currentExperimentId = dbHelper.createBiomarkerExperiment(
                     userEmail,
                     "Bluetooth",
                     samplesPerSecond,
                     movingAvgValue,
                     durationOfExp,
-                    max,
+                    finalCortisol,   // ← STORE CORTISOL ONLY
                     dataSize,
-                    tsToSave
+                    tsToSave,
+                    tubeId,             // from wizard Intent
+                    cartridgeId
             );
 
-            // Add all data points
             dbHelper.addBiomarkerDataBatch(
                     currentExperimentId,
                     xaxis,
@@ -1395,12 +1498,11 @@ public class OutputBluetooth extends AppCompatActivity {
                     dataPointsavgd
             );
 
-            // Remove individual success toast - consolidated message shown in onClickSave
-            Log.i(TAG, "Data saved to database with experiment ID: " + currentExperimentId);
+            Log.d("DEBUG_SAVE", "Saved cortisol to DB = " + finalCortisol);
+            new SyncManager(getApplicationContext()).pushAllDirtyData(null);
 
         } catch (Exception e) {
-            Toast.makeText(this, "Database save error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "Database save error: " + e.getMessage(), e);
+            Log.e(TAG, "Database save error", e);
         }
     }
 
@@ -1443,22 +1545,22 @@ public class OutputBluetooth extends AppCompatActivity {
     }
 
     private void initializeViews() {
-        graphView = findViewById(R.id.graphViewBL);
+        // graphView = findViewById(R.id.graphViewBL);
 
         startButton = findViewById(R.id.buttonStartBL);
-        stopButton = findViewById(R.id.buttonStopBL);
-        saveButton = findViewById(R.id.buttonSaveBL);
-        settingsButton = findViewById(R.id.buttonSettingBL);
+//        stopButton = findViewById(R.id.buttonStopBL);
+//        saveButton = findViewById(R.id.buttonSaveBL);
+//       //  settingsButton = findViewById(R.id.buttonSettingBL);
         connectButton = findViewById(R.id.buttonConnectBL);
         showButton = findViewById(R.id.buttonShowBL);
         textViewAppend = findViewById(R.id.textAppendBL);
 
         // Set initial button states
         startButton.setEnabled(false);
-        stopButton.setEnabled(false);
-        settingsButton.setEnabled(true); // Always allow settings
+//        stopButton.setEnabled(false);
+//        settingsButton.setEnabled(true); // Always allow settings
         connectButton.setEnabled(false); // Will be enabled when Bluetooth is ready
-        saveButton.setEnabled(false);
+//        saveButton.setEnabled(false);
         showButton.setEnabled(true);
         showButton.setAlpha(1.0f);
 
@@ -1571,7 +1673,7 @@ public class OutputBluetooth extends AppCompatActivity {
 
             // Enable UI elements now that Bluetooth is ready
             connectButton.setEnabled(true);
-            settingsButton.setEnabled(true);
+//            settingsButton.setEnabled(true);
             startButton.setEnabled(false); // Will be enabled after connection
 
             // Search for and connect to device
@@ -1836,19 +1938,19 @@ public class OutputBluetooth extends AppCompatActivity {
                     // Update buttons based on whether we're restarting collection or not
                     if (restartCollection) {
                         // Data collection will restart - keep settings enabled to show dialog
-                        stopButton.setEnabled(true);
+//                        stopButton.setEnabled(true);
                         connectButton.setEnabled(false);
-                        settingsButton.setEnabled(true); // Keep enabled to show dialog
-                        saveButton.setEnabled(false);
+//                        settingsButton.setEnabled(true); // Keep enabled to show dialog
+//                        saveButton.setEnabled(false);
                         showButton.setEnabled(false);
                         startButton.setEnabled(false);
                     } else {
                         // Just reconnected - allow settings since not collecting
                         startButton.setEnabled(true);
-                        stopButton.setEnabled(false);
+//                        stopButton.setEnabled(false);
                         connectButton.setEnabled(true);
-                        settingsButton.setEnabled(true);
-                        saveButton.setEnabled(dataSize > 0);   // Only if there's data
+//                        settingsButton.setEnabled(true);
+//                        saveButton.setEnabled(dataSize > 0);   // Only if there's data
                         showButton.setEnabled(dataSize > 0);   // Only if there's data
                     }
 
@@ -1859,7 +1961,7 @@ public class OutputBluetooth extends AppCompatActivity {
                     }
 
                     // Log button states for debugging
-                    logButtonStates("after connection success");
+                    // logButtonStates("after connection success");
 
                     // Reset reconnection flags
                     OutputBluetooth.this.reconnecting = false;
@@ -1966,14 +2068,14 @@ public class OutputBluetooth extends AppCompatActivity {
                 }
             }
 
-            // ✅ Check if we hit batch limit
-            checkBatchBoundary();
+//            // ✅ Check if we hit batch limit
+//            runOnUiThread(this::checkSampleLimit);;
 
             // only redraw every 3 samples
-            if (graphCount == 3) {
-                graphCount = 0;
-                drawGraph();
-            }
+//            if (graphCount == 3) {
+//                graphCount = 0;
+//                drawGraph();
+//            }
 
             // Update Save and Show button states when data is available
             runOnUiThread(this::updateDataDependentButtons);
@@ -2142,11 +2244,48 @@ public class OutputBluetooth extends AppCompatActivity {
             double val1 = raw1 * analogRef / (Math.pow(2, ADCbits) - 1);
             double val2 = raw2 * analogRef / (Math.pow(2, ADCbits) - 1);
 
+
+
             // update text
             dataSize++;
             time += 1.0 / samplesPerSecond;
+            // Feed Developer Mode graph if open
+
+            double yValue = val1 * 1000.0;
+
+            if (yValue >= 428.0 && yValue <= 478.6686) {
+                double cortisol = Math.pow((yValue - 482.9265) / (-4.2579), 1.0 / 0.5553);
+                validCortisolList.add(cortisol);
+
+                double runningAvg = calculateFinalExperimentCortisol();
+                Log.d("CORTISOL_ROLLING",
+                        "Sample#" + dataSize +
+                                " | yValue=" + String.format(Locale.getDefault(), "%.4f", yValue) +
+                                " | thisCortisol=" + String.format(Locale.getDefault(), "%.4f", cortisol) +
+                                " | validCount=" + validCortisolList.size() +
+                                " | runningAvg=" + String.format(Locale.getDefault(), "%.4f", runningAvg));
+            } else {
+                Log.d("CORTISOL_ROLLING",
+                        "Sample#" + dataSize +
+                                " | yValue=" + String.format(Locale.getDefault(), "%.4f", yValue) +
+                                " | REJECTED (out of range 428-478.6686)" +
+                                " | validCount=" + validCortisolList.size());
+            }
+
+            Log.d(TAG, "processBluetoothData called, devModeActive=" + devModeActive + " val1=" + val1 + " time=" + time);
+
+            if (devModeActive) {
+                devModeXAxis.add(time);
+                devModeYAxis.add(val1);
+                double avg = dataPointsavgd.isEmpty() ? val1 : dataPointsavgd.get(dataPointsavgd.size() - 1);
+                devModeAvgY.add(avg);
+                Log.d(TAG, "DevMode fed: xSize=" + devModeXAxis.size() + " ySize=" + devModeYAxis.size());
+            }
+
+
+
             // Calculate cortisol from last 100 samples (or all if less than 100)
-            double currentCortisol = calculateRollingAverageCortisol();
+            double currentCortisol = calculateFinalExperimentCortisol();
 
             textViewAppend.setText(String.format(Locale.getDefault(),
                     "Samples %d | %.2fs\n0: %.4f V\n1: %.4f V\n2: %.4f V\nCortisol: %.1f ng/mL",
@@ -2176,6 +2315,7 @@ public class OutputBluetooth extends AppCompatActivity {
 
             // Update Save and Show button states when data is available
             runOnUiThread(this::updateDataDependentButtons);
+            runOnUiThread(this::checkSampleLimit);
 
         } catch (Exception e) {
             Log.e(TAG, "Error in processBluetoothData", e);
@@ -2209,41 +2349,120 @@ public class OutputBluetooth extends AppCompatActivity {
         }
     }
     private double calculateRollingAverageCortisol() {
+
         if (dataPoints1.isEmpty()) {
+            Log.d("ROLLING_CORTISOL", "No samples yet");
             return 0.0;
         }
 
         int totalSamples = dataPoints1.size();
-        int samplesToAverage = Math.min(100, totalSamples);
-        int startIndex = totalSamples - samplesToAverage;
+        int samplesToCheck = Math.min(100, totalSamples);
+        int startIndex = totalSamples - samplesToCheck;
 
-        double sum = 0.0;
+        double sumCortisol = 0.0;
+        double sumVoltage = 0.0;
+        int validCount = 0;
+
         for (int i = startIndex; i < totalSamples; i++) {
-            sum += dataPoints1.get(i);
-        }
-        double avgVoltage = sum / samplesToAverage;
-        double yValue = avgVoltage * 1000.0; // mV
 
-        // Single range check + log
-        if (yValue < 428.0 || yValue > 478.6686) {
-            Log.d(TAG, "ROLLING INVALID totalSamples=" + totalSamples
-                    + " windowSize=" + samplesToAverage
-                    + " avgVoltage=" + avgVoltage
-                    + " yValue=" + yValue);
+            double voltage = dataPoints1.get(i);
+            double yValue = voltage * 1000.0;
+
+            if (yValue >= 428.0 && yValue <= 478.6686) {
+
+                double cortisol =
+                        Math.pow((yValue - 482.9265) / (-4.2579),
+                                1.0 / 0.5553);
+
+                sumCortisol += cortisol;
+                sumVoltage += voltage;
+                validCount++;
+            }
+        }
+
+        if (validCount == 0) {
+            Log.d("ROLLING_CORTISOL",
+                    "ValidCount=0 (All samples invalid)");
             return 0.0;
         }
 
-        double cortisol =
-                Math.pow((yValue - 482.9265) / (-4.2579), 1.0 / 0.5553);
+        double avgCortisol = sumCortisol / validCount;
+        double avgVoltage = sumVoltage / validCount;
+        double avgYValue = avgVoltage * 1000.0;
 
-        Log.d(TAG, "ROLLING totalSamples=" + totalSamples
-                + " windowSize=" + samplesToAverage
-                + " avgVoltage=" + avgVoltage
-                + " yValue=" + yValue
-                + " cortisol=" + cortisol);
+        Log.d("ROLLING_CORTISOL",
+                "ValidCount=" + validCount +
+                        " avgVoltage=" + avgVoltage +
+                        " avgYValue=" + avgYValue +
+                        " Result=" + avgCortisol);
 
-        return cortisol;
+        return avgCortisol;
     }
+    private void autoFinalizeAndShow() {
+        try {
+            if (dataSize == 0 || dataPointsavgd.isEmpty()) {
+                Log.w(TAG, "No data to auto-save or show");
+                return;
+            }
+
+            // calculate max values (same as in onClickShow)
+            double max0 = findMaxbyAvg(dataPoints0);
+            double max1 = findMaxbyAvg(dataPoints1);
+            double finalCortisol = calculateFinalExperimentCortisol();
+            double max2 = findMaxbyAvg(dataPoints2);
+
+            // ensure experiment exists and update max
+            if (currentExperimentId == -1) {
+                long tsToSave = (sampleTimestamp > 0) ?
+                        sampleTimestamp : System.currentTimeMillis();
+                currentExperimentId = dbHelper.createBiomarkerExperiment(
+                        userEmail,
+                        "Bluetooth",
+                        samplesPerSecond,
+                        movingAvgValue,
+                        durationOfExp,
+                        finalCortisol,
+                        dataSize,
+                        tsToSave,
+                        tubeId,             // from wizard Intent
+                        cartridgeId
+                );
+                dbHelper.addBiomarkerDataBatch(
+                        currentExperimentId,
+                        xaxis, dataPoints0, dataPoints1, dataPoints2, dataPointsavgd
+                );
+                new SyncManager(getApplicationContext()).pushAllDirtyData(null);
+            } else {
+                dbHelper.updateBiomarkerExperimentMaxValue(currentExperimentId, finalCortisol);
+            }
+
+            // optional: also save CSV automatically
+            try {
+                SaveResult fileResult = saveToFileWithResult();
+                Log.i(TAG, "Auto-saved CSV to " + fileResult.displayPath);
+            } catch (Exception e) {
+                Log.e(TAG, "Auto CSV save failed", e);
+                // do not block results if file save fails
+            }
+
+            // open ResultActivity (based on onClickShow)
+            String role = getIntent().getStringExtra("userrole");
+            Intent resultActivity = new Intent(this, ResultActivity.class);
+            resultActivity.putExtra("max_value_port0", max0);
+            resultActivity.putExtra("max_value_port1", max1);
+            resultActivity.putExtra("max_value_port2", max2);
+            resultActivity.putExtra("final_cortisol", finalCortisol);
+            resultActivity.putExtra("user_email", userEmail);
+            resultActivity.putExtra("user_role", role);
+            startActivity(resultActivity);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error in autoFinalizeAndShow", e);
+            Toast.makeText(this, "Error finalizing data: " + e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
 
 
@@ -2400,6 +2619,7 @@ public class OutputBluetooth extends AppCompatActivity {
         dataPoints1Unclean.clear();
         dataPoints2Unclean.clear();
         dataPointsavgdUnclean.clear();
+        validCortisolList.clear();
         time = 0.0;
         dataSize = 0;
         graphCount = 0;
@@ -2438,6 +2658,142 @@ public class OutputBluetooth extends AppCompatActivity {
     //————————————————————————————
     // Thread to connect Bluetooth
     //————————————————————————————
+    private void handleDeveloperPattern(MotionEvent event, int width, int height) {
+        long now = System.currentTimeMillis();
+
+        if (patternStartTime == 0L || now - patternStartTime > DEV_PATTERN_TIMEOUT_MS) {
+            patternStartTime = now;
+            devIndex = 0;
+        }
+
+        float x = event.getX();
+        float y = event.getY();
+
+        int region = getRegionForTap(x, y, width, height);
+
+        Log.d(TAG, "region=" + region + " expected=" + devPattern[devIndex] + " index=" + devIndex);
+
+        if (region == devPattern[devIndex]) {
+            devIndex++;
+            if (devIndex == devPattern.length) {
+                devIndex = 0;
+                patternStartTime = 0L;
+                Log.d(TAG, "Developer pattern matched!");
+                openDeveloperMode();
+            }
+        } else {
+            patternStartTime = now;
+            devIndex = (region == devPattern[0]) ? 1 : 0;
+        }
+    }
+
+
+    private void openDeveloperMode() {
+        Intent intent = new Intent(this, DeveloperModeActivity.class);
+        startActivity(intent);
+    }
+    private void applyNewSettings(int newSps, int newAvg, double newDuration, boolean[] newPorts) {
+        samplesPerSecond = newSps;
+        movingAvgValue = newAvg;
+        durationOfExp = newDuration;
+        analogPort = newPorts;
+
+        // Sync to developer mode static fields
+        OutputBluetooth.devSamplesPerSecond = newSps;
+        OutputBluetooth.devMovingAvgValue = newAvg;
+        OutputBluetooth.devDurationOfExp = newDuration;
+        OutputBluetooth.devAnalogPort = newPorts;
+
+        saveSettings();
+        // resetGraph();  // commented out since graph moved to DevMode
+    }
+
+
+
+
+    private int getRegionForTap(float x, float y, int width, int height) {
+        boolean left = x < width / 2f;
+        boolean top = y < height / 2f;
+
+        if (top && left) return 0;       // TL
+        if (top && !left) return 1;      // TR
+        if (!top && !left) return 2;     // BR
+        return 3;                        // BL
+    }
+
+
+
+    private void checkSampleLimit() {
+        if (dataSize >= MAX_SAMPLES && started) {
+            Log.i(TAG, "Reached max sample limit " + MAX_SAMPLES + " at sample " + dataSize);
+
+            // stop collection
+            sendTimer(false);
+            started = false;
+
+            // mark that collection is complete and enable RESULTS
+            if (showButton != null) {
+                showButton.setEnabled(true);
+                showButton.setAlpha(1.0f);
+            }
+
+            // Let the user know
+            Toast.makeText(this,
+                    "Sample collection completed (" + dataSize + " samples). Tap RESULTS to view.",
+                    Toast.LENGTH_LONG).show();
+
+            // Optionally also update the info text card
+            if (textViewAppend != null) {
+                textViewAppend.setText(
+                        "Data Length: " + dataSize +
+                                "\nTime passed: " + String.format(Locale.getDefault(), "%.1f s", time) +
+                                "\nSample collection completed"
+                );
+            }
+
+            // Do NOT auto-open ResultActivity here.
+            // You can still auto-save to DB if you want:
+            saveToDatabaseHelperSafe();
+        }
+    }
+    private void saveToDatabaseHelperSafe() {
+        try {
+            if (dataPointsavgd.isEmpty()) return;
+
+            double max0 = findMaxbyAvg(dataPoints0);
+            double max1 = findMaxbyAvg(dataPoints1);
+            double finalCortisol = calculateFinalExperimentCortisol();
+            double max2 = findMaxbyAvg(dataPoints2);
+
+            long tsToSave = (sampleTimestamp > 0) ?
+                    sampleTimestamp : System.currentTimeMillis();
+
+            if (currentExperimentId == -1) {
+                currentExperimentId = dbHelper.createBiomarkerExperiment(
+                        userEmail,
+                        "Bluetooth",
+                        samplesPerSecond,
+                        movingAvgValue,
+                        durationOfExp,
+                        finalCortisol,
+                        dataSize,
+                        tsToSave,
+                        tubeId,             // from wizard Intent
+                        cartridgeId
+                );
+                dbHelper.addBiomarkerDataBatch(
+                        currentExperimentId,
+                        xaxis, dataPoints0, dataPoints1, dataPoints2, dataPointsavgd
+                );
+            } else {
+                dbHelper.updateBiomarkerExperimentMaxValue(currentExperimentId, finalCortisol);
+            }
+            new SyncManager(getApplicationContext()).pushAllDirtyData(null);
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving to DB after completion", e);
+        }
+    }
+
 
     private void checkBatchBoundary() {
         if (dataSize > 0 && dataSize % BATCH_SIZE == 0) {
@@ -2601,17 +2957,24 @@ public class OutputBluetooth extends AppCompatActivity {
             }
 
             Log.e(TAG, "All connection attempts failed");
+//            runOnUiThread(() -> {
+//                onBluetoothConnected();
+//                Toast.makeText(OutputBluetooth.this,
+//                        "Connection failed after " + MAX_RETRY_ATTEMPTS + " attempts. Please check device and try again.",
+//                        Toast.LENGTH_LONG).show();
+//
+//                // Reset UI state
+//                startButton.setEnabled(true);
+////
+//                connectButton.setEnabled(true);
+////                settingsButton.setEnabled(true);
+//            });
             runOnUiThread(() -> {
                 Toast.makeText(OutputBluetooth.this,
                         "Connection failed after " + MAX_RETRY_ATTEMPTS + " attempts. Please check device and try again.",
                         Toast.LENGTH_LONG).show();
-
-                // Reset UI state
-                startButton.setEnabled(true);
-                stopButton.setEnabled(false);
-                connectButton.setEnabled(true);
-                settingsButton.setEnabled(true);
             });
+
         }
 
         private boolean ensureBluetoothReady() {
@@ -2772,20 +3135,20 @@ public class OutputBluetooth extends AppCompatActivity {
                         connectionEstablished = true;
                     }
 
-                    // ✅ CHECK: If this is a batch transition and data collection was active
+                    // Update info card with "Device connected: <name>"
+                    onBluetoothConnected();
+
+                    // CHECK: If this is a batch transition and data collection was active
                     boolean shouldResumeCollection = started && currentBatch > 1;
 
                     if (shouldResumeCollection) {
-                        // ✅ BATCH TRANSITION: Automatically resume data collection
+                        // BATCH TRANSITION: Automatically resume data collection
                         Log.i(TAG, "Batch transition complete - resuming data collection");
 
                         // Update UI for resumed collection
-                        startButton.setEnabled(false);
-                        stopButton.setEnabled(true);
-                        connectButton.setEnabled(false);
-                        settingsButton.setEnabled(true);
-                        saveButton.setEnabled(false);
-                        showButton.setEnabled(false);
+                        if (startButton != null) startButton.setEnabled(false);
+                        if (connectButton != null) connectButton.setEnabled(false);
+                        if (showButton != null) showButton.setEnabled(false);
 
                         // Restart data collection
                         sendTimer(true);
@@ -2793,19 +3156,14 @@ public class OutputBluetooth extends AppCompatActivity {
                         Toast.makeText(OutputBluetooth.this,
                                 "Batch " + currentBatch + " resumed", Toast.LENGTH_SHORT).show();
                     } else {
-                        // ✅ NORMAL CONNECTION: Update UI for connected but not started
-                        startButton.setEnabled(true);  // Enable start button
-                        stopButton.setEnabled(false);  // Not started yet
-                        connectButton.setEnabled(true); // Allow manual reconnect
-                        settingsButton.setEnabled(true); // Allow settings
-                        saveButton.setEnabled(dataSize > 0);   // Only if there's data
-                        showButton.setEnabled(dataSize > 0);   // Only if there's data
+                        // NORMAL CONNECTION: Update UI for connected but not started
+                        if (startButton != null)
+                            startButton.setEnabled(true);   // Enable start button
+                        if (connectButton != null) connectButton.setEnabled(true);
+                        if (showButton != null) showButton.setEnabled(dataSize > 0);
 
                         Log.i(TAG, "Connection established. Ready for data collection.");
                     }
-
-                    // Log button states for debugging
-                    logButtonStates("after connection success");
 
                     // Reset reconnection flags
                     OutputBluetooth.this.reconnecting = false;
@@ -2822,7 +3180,55 @@ public class OutputBluetooth extends AppCompatActivity {
                 }
             });
         }
+
     }
+    private void onBluetoothConnected() {
+        connectionEstablished = true;
+
+        String deviceName = (myDevice != null && myDevice.getName() != null)
+                ? myDevice.getName()
+                : "Unknown device";
+
+        if (textViewAppend != null) {
+            textViewAppend.setText(
+                    "Device connected: " + deviceName +
+                            "\nData Length: " + dataSize +
+                            "\nTime passed: " + String.format(Locale.getDefault(), "%.1f s", time)
+            );
+        }
+
+        if (startButton != null) startButton.setEnabled(true);
+        if (connectButton != null) connectButton.setEnabled(true);
+    }
+    private double calculateFinalExperimentCortisol() {
+        if (validCortisolList == null || validCortisolList.isEmpty()) {
+            Log.d(TAG, "calculateFinalExperimentCortisol: no valid cortisol samples");
+            return 0.0;  // or -1.0 if you prefer a sentinel
+        }
+
+        double sum = 0.0;
+        int count = 0;
+
+        for (double c : validCortisolList) {
+            if (!Double.isNaN(c) && !Double.isInfinite(c)) {
+                sum += c;
+                count++;
+            }
+        }
+
+        if (count == 0) {
+            Log.d(TAG, "calculateFinalExperimentCortisol: all values invalid");
+            return 0.0;
+        }
+
+        double avg = sum / count;
+        Log.d(TAG, "calculateFinalExperimentCortisol: count=" + count + " avg=" + avg);
+        return avg;
+    }
+
+
+
+
 
     // Helper method to check if we have a valid Bluetooth connection
     private boolean hasValidConnection() {
@@ -2831,15 +3237,15 @@ public class OutputBluetooth extends AppCompatActivity {
     }
 
     // Helper method to log current button states for debugging
-    private void logButtonStates(String context) {
-        Log.d(TAG, "Button states (" + context + "): " +
-                "Start=" + startButton.isEnabled() +
-                ", Stop=" + stopButton.isEnabled() +
-                ", Connect=" + connectButton.isEnabled() +
-                ", Settings=" + settingsButton.isEnabled() +
-                ", Save=" + saveButton.isEnabled() +
-                ", Show=" + showButton.isEnabled());
-    }
+//    private void logButtonStates(String context) {
+//        Log.d(TAG, "Button states (" + context + "): " +
+//                "Start=" + startButton.isEnabled() +
+//                ", Stop=" + stopButton.isEnabled() +
+//                ", Connect=" + connectButton.isEnabled() +
+//                ", Settings=" + settingsButton.isEnabled() +
+//                ", Save=" + saveButton.isEnabled() +
+//                ", Show=" + showButton.isEnabled());
+//    }
 
     // Helper method to update Save and Show button states based on data availability
     private void updateDataDependentButtons() {
@@ -2848,16 +3254,26 @@ public class OutputBluetooth extends AppCompatActivity {
         boolean shouldEnable = hasData && !started;
 
         // Only update if the state would change to avoid unnecessary UI updates
-        if (saveButton.isEnabled() != shouldEnable) {
-            saveButton.setEnabled(shouldEnable);
-            Log.d(TAG, "Save button " + (shouldEnable ? "enabled" : "disabled") +
-                    " (dataSize=" + dataSize + ", started=" + started + ")");
-        }
+//        if (saveButton.isEnabled() != shouldEnable) {
+//            saveButton.setEnabled(shouldEnable);
+//            Log.d(TAG, "Save button " + (shouldEnable ? "enabled" : "disabled") +
+//                    " (dataSize=" + dataSize + ", started=" + started + ")");
+//        }
+//
+//        if (showButton.isEnabled() != shouldEnable) {
+//            showButton.setEnabled(shouldEnable);
+//            Log.d(TAG, "Show button " + (shouldEnable ? "enabled" : "disabled") +
+//                    " (dataSize=" + dataSize + ", started=" + started + ")");
+//        }
 
-        if (showButton.isEnabled() != shouldEnable) {
-            showButton.setEnabled(shouldEnable);
-            Log.d(TAG, "Show button " + (shouldEnable ? "enabled" : "disabled") +
-                    " (dataSize=" + dataSize + ", started=" + started + ")");
+        if (stopButton != null) {
+            stopButton.setEnabled(false);
+        }
+        if (saveButton != null) {
+            saveButton.setEnabled(hasData);
+        }
+        if (showButton != null) {
+            showButton.setEnabled(hasData);
         }
     }
 }

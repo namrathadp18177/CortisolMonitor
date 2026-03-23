@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F6FA">
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:titleTextColor="@android:color/white" />
+
+    <!-- STEP PROGRESS -->
+    <LinearLayout
+        android:id="@+id/layoutStepProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View android:id="@+id/step1"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_active"/>
+
+            <View android:layout_width="0dp"
+                android:layout_height="1.5dp"
+                android:layout_weight="1"
+                android:background="#CFCFCF"/>
+
+            <View android:id="@+id/step2"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_inactive"/>
+
+            <View android:layout_width="0dp"
+                android:layout_height="1.5dp"
+                android:layout_weight="1"
+                android:background="#CFCFCF"/>
+
+            <View android:id="@+id/step3"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_inactive"/>
+
+            <View android:layout_width="0dp"
+                android:layout_height="1.5dp"
+                android:layout_weight="1"
+                android:background="#CFCFCF"/>
+
+            <View android:id="@+id/step4"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_inactive"/>
+
+            <View android:layout_width="0dp"
+                android:layout_height="1.5dp"
+                android:layout_weight="1"
+                android:background="#CFCFCF"/>
+
+            <View android:id="@+id/step5"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_inactive"/>
+
+            <View android:layout_width="0dp"
+                android:layout_height="1.5dp"
+                android:layout_weight="1"
+                android:background="#CFCFCF"/>
+
+            <View android:id="@+id/step6"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_inactive"/>
+
+            <View android:layout_width="0dp"
+                android:layout_height="1.5dp"
+                android:layout_weight="1"
+                android:background="#CFCFCF"/>
+
+            <View android:id="@+id/step7"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/step_circle_inactive"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- CONTENT -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/contentLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:id="@+id/tvStepIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Step 1 of 7"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Scan Tube QR"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp"/>
+
+            <TextView
+                android:id="@+id/tvSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Scan the QR code printed on the tube."
+                android:layout_marginTop="6dp"/>
+
+            <!-- PRIMARY BUTTON (MOVED HERE) -->
+            <Button
+                android:id="@+id/btnPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Scan QR Code"
+                android:layout_marginTop="16dp"
+                android:textColor="@android:color/white"
+                android:backgroundTint="?attr/colorPrimary"/>
+
+            <!-- QR VALUE -->
+            <TextView
+                android:id="@+id/tvQrValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tube ID:"
+                android:layout_marginTop="10dp"
+                android:visibility="gone"/>
+
+            <!-- TIMER -->
+            <TextView
+                android:id="@+id/tvTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="05:00"
+                android:textSize="42sp"
+                android:textStyle="bold"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:visibility="gone"/>
+
+            <!-- SAMPLE TIME BUTTON -->
+            <Button
+                android:id="@+id/btnSampleTime"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Set Sample Collection Time"
+                android:layout_marginTop="16dp"
+                android:textColor="@android:color/white"
+                android:backgroundTint="?attr/colorPrimary"
+                android:visibility="gone"/>
+
+            <!-- IMAGE -->
+            <ImageView
+                android:id="@+id/ivStepImage"
+                android:layout_width="220dp"
+                android:layout_height="220dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- BOTTOM NAV -->
+    <LinearLayout
+        android:id="@+id/bottomButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@android:color/white"
+        android:orientation="horizontal"
+        android:elevation="8dp">
+
+        <Button
+            android:id="@+id/btnBack"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:text="Back"
+            android:textColor="#555555"
+            android:backgroundTint="#E0E0E0"/>
+
+        <Button
+            android:id="@+id/btnSecondary"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="Next"
+            android:textColor="@android:color/white"
+            android:backgroundTint="?attr/colorPrimary"
+            android:enabled="false"/>
+    </LinearLayout>
+
+</LinearLayout>

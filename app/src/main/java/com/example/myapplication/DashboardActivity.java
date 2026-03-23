@@ -32,6 +32,8 @@ public class DashboardActivity extends AppCompatActivity {
     private boolean animationsStarted = false;
     private DatabaseHelper dbHelper;
     private UserDatabaseHelper userDbHelper;
+    private CardView cardCortisolGraph;
+
 
 
 
@@ -56,6 +58,28 @@ public class DashboardActivity extends AppCompatActivity {
 
         initializeViews();
         setupClickListeners();
+        // Trigger background sync on dashboard load
+        new Thread(() -> {
+            Log.d("SyncTest", "Thread started");
+            try {
+                SyncManager syncManager = new SyncManager(getApplicationContext());
+                Log.d("SyncTest", "SyncManager created, calling pushAllDirtyData");
+                syncManager.pushAllDirtyData(new SyncManager.SyncCallback() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d("SyncTest", " Sync SUCCESS - data should be in Firestore now");
+                    }
+                    @Override
+                    public void onFailure(String error) {
+                        Log.e("SyncTest", " Sync FAILED: " + error);
+                    }
+                });
+            } catch (Exception e) {
+                Log.e("SyncTest", " Exception in sync: " + e.getMessage(), e);
+            }
+        }).start();
+
+
 
         // Delay animations slightly for a smoother experience
         handler.postDelayed(() -> {
@@ -94,6 +118,8 @@ public class DashboardActivity extends AppCompatActivity {
         cardQuestionnaire = findViewById(R.id.cardQuestionnaire);
         cardBiomarkerConnection1 = findViewById(R.id.cardBiomarkerConnection1);
         cardResults = findViewById(R.id.cardResults);
+        cardCortisolGraph = findViewById(R.id.cardCortisolGraph);
+
 
 
 
@@ -105,9 +131,13 @@ public class DashboardActivity extends AppCompatActivity {
         cardQuestionnaire.setAlpha(0f);
         cardBiomarkerConnection1.setAlpha(0f);
         cardResults.setAlpha(0f);
+        cardCortisolGraph.setAlpha(0f);
         cardQuestionnaire.setTranslationY(50f);
         cardBiomarkerConnection1.setTranslationY(50f);
         cardResults.setTranslationY(50f);
+        cardCortisolGraph.setTranslationY(50f);
+
+
 
         // Get email from intent or DatabaseHelper
         String userEmail = DatabaseHelper.getCurrentUserEmail();
@@ -123,7 +153,8 @@ public class DashboardActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        CardView[] cards = {cardQuestionnaire, cardBiomarkerConnection1, cardResults};
+        CardView[] cards = {cardQuestionnaire, cardBiomarkerConnection1, cardResults, cardCortisolGraph};
+
 
         for (CardView card : cards) {
             setupCardTouchAnimation(card);
@@ -154,7 +185,7 @@ public class DashboardActivity extends AppCompatActivity {
             playTapAnimation(cardBiomarkerConnection1);
 
             Snackbar.make(findViewById(android.R.id.content),
-                    "Connecting to biomarker device...", Snackbar.LENGTH_SHORT).show();
+                    "Starting cortisol measurement...", Snackbar.LENGTH_SHORT).show();
 
             handler.postDelayed(() -> {
                 Intent intent = new Intent(DashboardActivity.this, BiomarkerInstructions.class);
@@ -164,9 +195,10 @@ public class DashboardActivity extends AppCompatActivity {
                 startActivity(intent);
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             }, 250);
-
-
         });
+
+
+
 
         cardResults.setOnClickListener(v -> {
             v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
@@ -180,6 +212,23 @@ public class DashboardActivity extends AppCompatActivity {
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             }, 250);
         });
+
+        cardCortisolGraph.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            playTapAnimation(cardCortisolGraph);
+
+            Snackbar.make(findViewById(android.R.id.content),
+                    "Loading cortisol history...", Snackbar.LENGTH_SHORT).show();
+
+            handler.postDelayed(() -> {
+                Intent intent = new Intent(DashboardActivity.this, CortisolGraphActivity.class);
+                String userEmail = DatabaseHelper.getCurrentUserEmail();
+                intent.putExtra("useremail", userEmail);
+                startActivity(intent);
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            }, 250);
+        });
+
     }
 
     private void setupCardTouchAnimation(CardView card) {
@@ -242,7 +291,8 @@ public class DashboardActivity extends AppCompatActivity {
     }
 
     private void animateCardsSequentially() {
-        CardView[] cards = {cardQuestionnaire, cardBiomarkerConnection1, cardResults};
+        CardView[] cards = {cardQuestionnaire, cardBiomarkerConnection1, cardResults, cardCortisolGraph};
+
 
         for (int i = 0; i < cards.length; i++) {
             final CardView card = cards[i];
@@ -319,9 +369,22 @@ public class DashboardActivity extends AppCompatActivity {
         super.onResume();
 
         // Set initial elevation for all cards
-        CardView[] cards = {cardQuestionnaire, cardBiomarkerConnection1, cardResults};
+        CardView[] cards = {cardQuestionnaire, cardBiomarkerConnection1, cardResults, cardCortisolGraph};
+
         for (CardView card : cards) {
             card.setCardElevation(8f);
+        }
+        if (FirebaseAuthHelper.isLoggedIn()) {
+            new SyncManager(this).pushAllDirtyData(new SyncManager.SyncCallback() {
+                @Override
+                public void onSuccess() {
+                    Log.d("Sync", "Background sync complete");
+                }
+                @Override
+                public void onFailure(String error) {
+                    Log.e("Sync", "Background sync failed: " + error);
+                }
+            });
         }
     }
 

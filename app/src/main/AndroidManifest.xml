@@ -16,7 +16,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- USB Permissions -->
     <uses-feature android:name="android.hardware.usb.host" />
 
+
     <uses-permission android:name="android.permission.USB_PERMISSION" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:name=".MyApplication"
@@ -27,8 +29,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme.Light"
+        android:hardwareAccelerated="true"
         tools:targetApi="31">
-        <activity
+    <activity
             android:name=".FinalResultsActivity"
             android:exported="false" />
         <activity
@@ -81,6 +84,25 @@
         <activity android:name=".CareProviderAccountActivity" />
         <activity android:name=".ActivateAccountActivity" />
         <activity android:name=".PatientHistoryDetailActivity" />
+        <activity android:name=".DeveloperModeActivity" />
+        <activity
+            android:name=".QRScanActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+        <activity
+            android:name=".CortisolGraphActivity"
+            android:label="Cortisol Graph"
+            android:parentActivityName=".DashboardActivity" />
+        <activity
+            android:name=".MeasureCortisolWizardActivity"
+            android:label="Measure Cortisol"
+            android:parentActivityName=".DashboardActivity" />
+        <activity
+            android:name=".QRWizardActivity"
+            android:exported="false" />
+
+
+
 
 
 
@@ -112,7 +134,8 @@
         <activity
             android:name=".ResultActivity"
             android:exported="false"
-            android:theme="@style/AppTheme.Light" />
+            android:theme="@style/AppTheme.Light"
+            android:hardwareAccelerated="true" />
         <activity
             android:name=".QuestionnaireActivity"
             android:exported="false"
@@ -151,6 +174,8 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+
     </application>
 
 </manifest>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "501590926904",
+    "project_id": "cortisol-monitor",
+    "storage_bucket": "cortisol-monitor.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:501590926904:android:0517cddc3e890dd1b7e8cd",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZwoU5NttDO9ek1axWOvwVRwbDtaZVwW4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

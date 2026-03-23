@@ -39,7 +39,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- Root for PDF export -->
         <LinearLayout
+            android:id="@+id/resultRootLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -84,6 +86,42 @@
                         android:textSize="14sp"
                         android:textColor="#757575"
                         android:layout_marginTop="4dp" />
+
+                    <!-- Stats chips row: Peak + Lowest only -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp"
+                        android:weightSum="2">
+
+                        <TextView
+                            android:id="@+id/tvPeakCortisol"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Peak: --"
+                            android:textSize="14sp"
+                            android:padding="8dp"
+                            android:gravity="center"
+                            android:layout_marginEnd="4dp"
+                            android:background="#FFF3E0"
+                            android:textColor="#EF6C00" />
+
+                        <TextView
+                            android:id="@+id/tvMinCortisol"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Lowest: --"
+                            android:textSize="14sp"
+                            android:padding="8dp"
+                            android:gravity="center"
+                            android:layout_marginStart="4dp"
+                            android:background="#E3F2FD"
+                            android:textColor="#1565C0" />
+                    </LinearLayout>
+
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -170,9 +208,44 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="8dp"
                 android:background="#FAFAFA"
                 android:elevation="2dp" />
+
+            <!-- Export buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btnExportCsv"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Export All Data to CSV"
+                    android:textColor="#FFFFFF"
+                    android:background="#00796B"
+                    android:padding="12dp"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:elevation="2dp" />
+
+                <Button
+                    android:id="@+id/btnExportPdf"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Export All Data to PDF"
+                    android:textColor="#FFFFFF"
+                    android:background="#0288D1"
+                    android:padding="12dp"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    android:elevation="2dp" />
+            </LinearLayout>
 
             <!-- Action Button -->
             <Button

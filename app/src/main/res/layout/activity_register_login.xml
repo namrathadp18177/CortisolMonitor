@@ -132,6 +132,19 @@
                             android:hint="Password"
                             android:inputType="textPassword"/>
                     </com.google.android.material.textfield.TextInputLayout>
+                    <TextView
+                        android:id="@+id/tvForgotPassword"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Forgot Password?"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:padding="4dp"
+                        android:layout_marginBottom="12dp"
+                        android:layout_gravity="end"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground"/>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/confirmPasswordInputLayout"

@@ -20,7 +20,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
     // Database info
     private static final String DATABASE_NAME = "UserProfile.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
 
     // Patient table
     private static final String TABLE_USERS = "users";
@@ -109,7 +109,10 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_RELATIONSHIP_STATUS + " TEXT, "
                 + COLUMN_WEIGHT_KG + " REAL, "
                 + COLUMN_HEIGHT_M + " REAL, "
-                + COLUMN_BMI + " REAL"
+                + COLUMN_BMI + " REAL, "
+                + "cloud_id TEXT, "
+                + "updated_at TEXT, "
+                + "dirty INTEGER DEFAULT 1"
                 + ")";
         db.execSQL(CREATE_USERS_TABLE);
 
@@ -125,7 +128,10 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_CP_PHONE + " TEXT, "
                 + COLUMN_CP_GENDER + " TEXT, "
                 + COLUMN_CP_DOB + " TEXT, "
-                + COLUMN_CP_ADDRESS + " TEXT"
+                + COLUMN_CP_ADDRESS + " TEXT, "
+                + "cloud_id TEXT, "
+                + "updated_at TEXT, "
+                + "dirty INTEGER DEFAULT 1"
                 + ")";
 
         db.execSQL(CREATE_CARE_PROVIDERS_TABLE);
@@ -139,6 +145,9 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                         COL_CP_PHONE + " TEXT, " +
                         COL_CP_RELATIONSHIP + " TEXT, " +
                         COL_CP_MEDICAL_CONDITIONS + " TEXT, " +
+                        "cloud_id TEXT, " +
+                        "updated_at TEXT, " +
+                        "dirty INTEGER DEFAULT 1, " +
                         "PRIMARY KEY(" + COL_CP_EMAIL + ", " + COL_CP_PROVIDER_MEDICAL_ID + ")" +
                         ");"
         );
@@ -152,12 +161,34 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.w(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_CARE_PROVIDERS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_CP_PATIENT_INFO);
 
-        onCreate(db);
+        if (oldVersion < 4) {
+            // Add sync columns to users table
+            db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN cloud_id TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN updated_at TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN dirty INTEGER DEFAULT 1");
+
+            // Add sync columns to care_providers table
+            db.execSQL("ALTER TABLE " + TABLE_CARE_PROVIDERS + " ADD COLUMN cloud_id TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_CARE_PROVIDERS + " ADD COLUMN updated_at TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_CARE_PROVIDERS + " ADD COLUMN dirty INTEGER DEFAULT 1");
+
+            // Add sync columns to cp_patient_info table
+            db.execSQL("ALTER TABLE " + TABLE_CP_PATIENT_INFO + " ADD COLUMN cloud_id TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_CP_PATIENT_INFO + " ADD COLUMN updated_at TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_CP_PATIENT_INFO + " ADD COLUMN dirty INTEGER DEFAULT 1");
+
+            // Mark all existing rows as dirty with current timestamp
+            String now = new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                    .format(new java.util.Date());
+
+            db.execSQL("UPDATE " + TABLE_USERS + " SET updated_at = '" + now + "', dirty = 1");
+            db.execSQL("UPDATE " + TABLE_CARE_PROVIDERS + " SET updated_at = '" + now + "', dirty = 1");
+            db.execSQL("UPDATE " + TABLE_CP_PATIENT_INFO + " SET updated_at = '" + now + "', dirty = 1");
+        }
     }
+
 
     // ─────────────────────────────────────────────
     // CARE PROVIDER METHODS
@@ -178,6 +209,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_CP_MEDICAL_ID, medicalId);
         values.put(COLUMN_CP_EMAIL, email);
         values.put(COLUMN_CP_PASSWORD, password);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
         long id = db.insert(TABLE_CARE_PROVIDERS, null, values);
         if (id > 0) {
             setCurrentUserEmail(email);
@@ -285,6 +318,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_WEIGHT_KG, weightKg);
         values.put(COLUMN_HEIGHT_M, heightM);
         values.put(COLUMN_BMI, bmi);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
         long id = db.insert(TABLE_USERS, null, values);
         if (id > 0) {
             Log.d(TAG, "User registered successfully with ID: " + id);
@@ -382,6 +417,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_WEIGHT_KG, weightKg);
         values.put(COLUMN_HEIGHT_M, heightM);
         values.put(COLUMN_BMI, bmi);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
         int rowsAffected = db.update(TABLE_USERS, values, COLUMN_EMAIL + " = ?", new String[]{email});
         if (rowsAffected > 0) {
             Log.d(TAG, "User demographics updated for: " + email);
@@ -397,6 +434,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COLUMN_AGE, age);
         values.put(COLUMN_BIRTH_DATE, birthDate);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
         int rowsAffected = db.update(TABLE_USERS, values, COLUMN_EMAIL + " = ?", new String[]{email});
         return rowsAffected > 0;
     }
@@ -535,6 +574,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         values.put(COL_CP_PHONE, phone);
         values.put(COL_CP_RELATIONSHIP, relationshipStatus);
         values.put(COL_CP_MEDICAL_CONDITIONS, medicalConditions);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
 
         int updated = db.update(
                 TABLE_CP_PATIENT_INFO,
@@ -595,6 +636,25 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         }
 
         return list;
+    }
+    public void markAsSyncedByEmail(String tableName, String email, String cloudId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("cloud_id", cloudId);
+        values.put("dirty", 0);
+        db.update(tableName, values, "patient_email = ?", new String[]{email});
+    }
+    public Cursor getDirtyRows(String tableName) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(tableName, null, "dirty = 1", null, null, null, null);
+    }
+
+    public void markAsSynced(String tableName, String idColumn, long rowId, String cloudId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("cloud_id", cloudId);
+        values.put("dirty", 0);
+        db.update(tableName, values, idColumn + " = ?", new String[]{String.valueOf(rowId)});
     }
 
 
@@ -678,6 +738,12 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         Log.d(TAG, "isPatientLinkedToAnyProvider(" + email + ") = " + linked);
         return linked;
     }
+    private String getCurrentIsoTime() {
+        return new java.text.SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                .format(new java.util.Date());
+    }
+
 
 
 

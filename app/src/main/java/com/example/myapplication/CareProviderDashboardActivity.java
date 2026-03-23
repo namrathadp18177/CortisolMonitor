@@ -7,6 +7,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -40,6 +41,21 @@ public class CareProviderDashboardActivity extends AppCompatActivity {
         initializeViews();
         setupWelcomeCard();
         setupClickListeners();
+        // Trigger background sync on dashboard load
+        new Thread(() -> {
+            SyncManager syncManager = new SyncManager(getApplicationContext());
+            syncManager.pushAllDirtyData(new SyncManager.SyncCallback() {
+                @Override
+                public void onSuccess() {
+                    Log.d("Dashboard", "Sync completed successfully");
+                }
+                @Override
+                public void onFailure(String error) {
+                    Log.e("Dashboard", "Sync failed: " + error);
+                }
+            });
+        }).start();
+
     }
 
     private void initializeViews() {

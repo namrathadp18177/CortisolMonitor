@@ -22,7 +22,7 @@ import com.example.myapplication.data.QuestionnaireResponse;
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "DatabaseHelper";
     private static final String DATABASE_NAME = "AppData.db"; // Renamed to reflect its purpose
-    private static final int DATABASE_VERSION = 2; // Reset as we're removing user table
+    private static final int DATABASE_VERSION = 5; // Reset as we're removing user table
     private final Context context;
 
     // Store current user email (kept for questionnaire and biomarker association)
@@ -51,6 +51,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_PORT1 = "port1";
     public static final String COLUMN_PORT2 = "port2";
     public static final String COLUMN_AVG = "avg";
+    public static final String COLUMN_TUBE_ID = "tube_id";
+    public static final String COLUMN_CARTRIDGE_ID = "cartridge_id";
+
 
     // Create table statements for biomarker data
     private static final String CREATE_TABLE_BIOMARKER_EXPERIMENTS = "CREATE TABLE " + TABLE_BIOMARKER_EXPERIMENTS + "("
@@ -62,7 +65,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             + COLUMN_MOVING_AVG + " INTEGER,"
             + COLUMN_DURATION + " REAL,"
             + COLUMN_MAX_VALUE + " REAL,"
-            + COLUMN_DATA_SIZE + " INTEGER"
+            + COLUMN_DATA_SIZE + " INTEGER,"
+            + COLUMN_TUBE_ID + " TEXT,"
+            + COLUMN_CARTRIDGE_ID + " TEXT,"
+            + "cloud_id TEXT,"
+            + "updated_at TEXT,"
+            + "dirty INTEGER DEFAULT 1"
             + ")";
 
     private static final String CREATE_TABLE_BIOMARKER_DATA = "CREATE TABLE " + TABLE_BIOMARKER_DATA + "("
@@ -117,7 +125,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "answer INTEGER," +
                     "timestamp INTEGER," +
                     "questionnaire_type TEXT," +
-                    "user_email TEXT)");
+                    "user_email TEXT," +
+                    "cloud_id TEXT," +
+                    "updated_at TEXT," +
+                    "dirty INTEGER DEFAULT 1)");
 
             // Create biomarker tables
             db.execSQL(CREATE_TABLE_BIOMARKER_EXPERIMENTS);
@@ -145,8 +156,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "phq9_triggered INTEGER DEFAULT 0," +
                     "bdi_triggered INTEGER DEFAULT 0," +
                     "gad7_triggered INTEGER DEFAULT 0," +
-                    "brs_triggered INTEGER DEFAULT 0" +
-                    ")");
+                            "brs_triggered INTEGER DEFAULT 0," +
+                            "cloud_id TEXT," +
+                            "updated_at TEXT," +
+                            "dirty INTEGER DEFAULT 1" +
+                            ")");
 
             Log.d(TAG, "Database tables created successfully");
 
@@ -158,18 +172,62 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Simple upgrade policy for non-user tables
-        Log.d(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
+        Log.w(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
 
-        // We won't do version-by-version upgrades as we're starting fresh
-        // If you need to preserve data, implement more sophisticated migration logic
-        db.execSQL("DROP TABLE IF EXISTS questionnaire_responses");
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_BIOMARKER_DATA);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_BIOMARKER_EXPERIMENTS);
-        db.execSQL("DROP TABLE IF EXISTS questionnaire_summaries");
+        if (oldVersion < 3) {
+            // Add sync columns to biomarkerexperiments
+            db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS + " ADD COLUMN cloud_id TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS + " ADD COLUMN updated_at TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS + " ADD COLUMN dirty INTEGER DEFAULT 1");
 
-        onCreate(db);
+            // Add sync columns to questionnaireresponses
+            db.execSQL("ALTER TABLE questionnaire_responses ADD COLUMN cloud_id TEXT");
+            db.execSQL("ALTER TABLE questionnaire_responses ADD COLUMN updated_at TEXT");
+            db.execSQL("ALTER TABLE questionnaire_responses ADD COLUMN dirty INTEGER DEFAULT 1");
+
+            // Add sync columns to questionnairesummaries
+            db.execSQL("ALTER TABLE questionnaire_summaries ADD COLUMN cloud_id TEXT");
+            db.execSQL("ALTER TABLE questionnaire_summaries ADD COLUMN updated_at TEXT");
+            db.execSQL("ALTER TABLE questionnaire_summaries ADD COLUMN dirty INTEGER DEFAULT 1");
+
+            // Mark all existing rows dirty with current timestamp
+            String now = new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                    .format(new java.util.Date());
+
+            db.execSQL("UPDATE " + TABLE_BIOMARKER_EXPERIMENTS + " SET updated_at = '" + now + "', dirty = 1");
+            db.execSQL("UPDATE questionnaire_responses SET updated_at = '" + now + "', dirty = 1");
+            db.execSQL("UPDATE questionnaire_summaries SET updated_at = '" + now + "', dirty = 1");
+        }
+        if (oldVersion < 4) {
+            // Fresh installs already have these columns from onCreate
+            // This handles users upgrading from version 3
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS + " ADD COLUMN cloud_id TEXT");
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS + " ADD COLUMN updated_at TEXT");
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS + " ADD COLUMN dirty INTEGER DEFAULT 1");
+            } catch (Exception ignored) {} // columns may already exist from v3 upgrade
+
+            String now = new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                    .format(new java.util.Date());
+            db.execSQL("UPDATE " + TABLE_BIOMARKER_EXPERIMENTS +
+                    " SET updated_at = '" + now + "', dirty = 1 WHERE dirty IS NULL");
+        }
+        if (oldVersion < 5) {
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS +
+                        " ADD COLUMN " + COLUMN_TUBE_ID + " TEXT");
+            } catch (Exception ignored) {}
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS +
+                        " ADD COLUMN " + COLUMN_CARTRIDGE_ID + " TEXT");
+            } catch (Exception ignored) {}
+        }
+
+
     }
+
 
     private void checkDatabase() {
         SQLiteDatabase db = getReadableDatabase();
@@ -226,6 +284,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Log.e(TAG, "Error checking questionnaire_summaries table: " + e.getMessage());
         }
     }
+    public void updateExperimentSampleIds(long experimentId, String tubeId, String cartridgeId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        if (tubeId != null) values.put(COLUMN_TUBE_ID, tubeId);
+        if (cartridgeId != null) values.put(COLUMN_CARTRIDGE_ID, cartridgeId);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
+        db.update(TABLE_BIOMARKER_EXPERIMENTS, values,
+                COLUMN_ID + " = ?", new String[]{String.valueOf(experimentId)});
+        Log.d(TAG, "Updated experiment " + experimentId + " with tube_id=" + tubeId
+                + " cartridge_id=" + cartridgeId);
+    }
+
 
     public QuestionnaireDao getQuestionnaireDao() {
         return new QuestionnaireDao() {
@@ -252,6 +323,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 }
 
                 values.put("user_email", userEmail);
+                values.put("updated_at", getCurrentIsoTime());
+                values.put("dirty", 1);
 
                 Log.d(TAG, "Inserting response with user_email: " + userEmail);
                 Log.d(TAG, "Response details: " + response.getSection() + " - " + response.getQuestionText());
@@ -294,6 +367,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                             userEmail = response.getUserEmail();
                         }
                         values.put("user_email", userEmail);
+                        values.put("updated_at", getCurrentIsoTime());
+                        values.put("dirty", 1);
 
                         db.insert("questionnaire_responses", null, values);
                     }
@@ -871,10 +946,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     /**
      * Creates a new biomarker experiment record and returns its ID
      */
-    public long createBiomarkerExperiment(String username, String source,
-                                          int samplingRate, int movingAvg,
-                                          double duration, double maxValuePort1,
-                                          int dataSize, long sampleTimestamp) {
+    public long createBiomarkerExperiment(String username,
+                                          String source,
+                                          int samplingRate,
+                                          int movingAvg,
+                                          double duration,
+                                          double maxValuePort1,
+                                          int dataSize,
+                                          long sampleTimestamp,
+                                          String tubeId,
+                                          String cartridgeId) {
+
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         Log.d("DB_DEBUG", "Saving experiment for username: [" + username + "]");
@@ -895,6 +977,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_DURATION, duration);
         values.put(COLUMN_MAX_VALUE, maxValuePort1);
         values.put(COLUMN_DATA_SIZE, dataSize);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
 
         long id = db.insert(TABLE_BIOMARKER_EXPERIMENTS, null, values);
         Log.d(TAG, "Created biomarker experiment with ID " + id);
@@ -945,6 +1029,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_MAX_VALUE, maxValue);
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
 
         int rowsUpdated = db.update(TABLE_BIOMARKER_EXPERIMENTS, values, COLUMN_ID + " = ?",
                 new String[]{String.valueOf(experimentId)});
@@ -1087,6 +1173,78 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         return maxValue;
     }
+    /**
+     * Returns all biomarker experiments for a patient, one per day (latest per day).
+     * Ordered oldest to newest for graph plotting.
+     */
+    public List<BiomarkerExperimentSummary> getAllExperimentsForGraph(String userEmail) {
+        List<BiomarkerExperimentSummary> results = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        if (userEmail == null || userEmail.isEmpty()) {
+            userEmail = currentUserEmail;
+        }
+
+        // Group by calendar day, pick the latest experiment per day
+        String sql = "SELECT " + COLUMN_ID + ", " + COLUMN_TIMESTAMP + ", " + COLUMN_MAX_VALUE +
+                " FROM " + TABLE_BIOMARKER_EXPERIMENTS +
+                " WHERE " + COLUMN_USERNAME + " = ?" +
+                " AND " + COLUMN_ID + " IN (" +
+                "   SELECT " + COLUMN_ID + " FROM " + TABLE_BIOMARKER_EXPERIMENTS +
+                "   WHERE " + COLUMN_USERNAME + " = ?" +
+                "   GROUP BY DATE(" + COLUMN_TIMESTAMP + " / 1000, 'unixepoch')" +
+                "   HAVING " + COLUMN_TIMESTAMP + " = MAX(" + COLUMN_TIMESTAMP + ")" +
+                " )" +
+                " ORDER BY " + COLUMN_TIMESTAMP + " ASC";
+
+        Cursor cursor = null;
+        try {
+            cursor = db.rawQuery(sql, new String[]{userEmail, userEmail});
+            Log.d(TAG, "getAllExperimentsForGraph - " + cursor.getCount() + " day entries for: " + userEmail);
+
+            while (cursor.moveToNext()) {
+                long id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID));
+                long ts = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP));
+                double maxVal = cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_MAX_VALUE));
+                results.add(new BiomarkerExperimentSummary(id, ts, maxVal));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in getAllExperimentsForGraph: " + e.getMessage(), e);
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+
+        return results;
+    }
+    public List<BiomarkerExperimentSummary> getExperimentById(String userEmail, long experimentId) {
+        List<BiomarkerExperimentSummary> results = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String sql = "SELECT " + COLUMN_ID + ", " + COLUMN_TIMESTAMP + ", " + COLUMN_MAX_VALUE +
+                " FROM " + TABLE_BIOMARKER_EXPERIMENTS +
+                " WHERE " + COLUMN_ID + " = ? AND " + COLUMN_USERNAME + " = ?";
+
+        Cursor cursor = null;
+        try {
+            cursor = db.rawQuery(sql, new String[]{
+                    String.valueOf(experimentId), userEmail
+            });
+            if (cursor.moveToFirst()) {
+                long id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID));
+                long ts = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP));
+                double maxVal = cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_MAX_VALUE));
+                results.add(new BiomarkerExperimentSummary(id, ts, maxVal));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in getExperimentById: " + e.getMessage(), e);
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+
+        return results;
+    }
+
+
 
     // ====================== QUESTIONNAIRE SUMMARY METHODS ======================
 
@@ -1232,6 +1390,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put("bdi_triggered", summary.getBdiTriggered());
         values.put("gad7_triggered", summary.getGad7Triggered());
         values.put("brs_triggered", summary.getBrsTriggered());
+        values.put("updated_at", getCurrentIsoTime());
+        values.put("dirty", 1);
 
         // Check if this user already has a summary
         boolean exists = false;
@@ -1253,6 +1413,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             Log.d(TAG, "Inserted new questionnaire summary for: " + summary.getUserEmail());
         }
     }
+    private String getCurrentIsoTime() {
+        return new java.text.SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                .format(new java.util.Date());
+    }
+    public Cursor getDirtyRows(String tableName) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(tableName, null, "dirty = 1", null, null, null, null);
+    }
+    public void markAsSynced(String tableName, String idColumn, long rowId, String cloudId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("cloud_id", cloudId);
+        values.put("dirty", 0);
+        db.update(tableName, values, idColumn + " = ?", new String[]{String.valueOf(rowId)});
+    }
+
+
+
 
     /**
      * Gets all questionnaire summaries as a formatted table for export

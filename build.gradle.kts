@@ -6,6 +6,11 @@ buildscript {
         maven { url = uri("https://jitpack.io") }
         maven { url = uri("https://kommunicate.jfrog.io/artifactory/kommunicate-android-sdk") }
     }
+    dependencies {
+        // Add this:
+        classpath("com.google.gms:google-services:4.4.0")
+    }
+
 }
 
 plugins {

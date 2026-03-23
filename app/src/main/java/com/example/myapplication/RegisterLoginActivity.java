@@ -69,6 +69,8 @@ public class RegisterLoginActivity extends AppCompatActivity {
     private String selectedSex = "Male";
     private String selectedRace = "White";
     private String selectedRelationshipStatus = "Single";
+    private TextView tvForgotPassword;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +115,8 @@ public class RegisterLoginActivity extends AppCompatActivity {
         tvToggleMode = findViewById(R.id.tvToggleMode);
         ivWellnessIcon = findViewById(R.id.ivWellnessIcon);
         cbRememberMe = findViewById(R.id.cbRememberMe);
+        tvForgotPassword = findViewById(R.id.tvForgotPassword);
+
 
         // Care Provider fields
         etCpName = findViewById(R.id.etCpName);
@@ -300,6 +304,8 @@ public class RegisterLoginActivity extends AppCompatActivity {
             }
             handleRegistration(email, password, dateOfBirth);
         });
+        tvForgotPassword.setOnClickListener(v -> showForgotPasswordDialog());
+
 
         tvToggleMode.setOnClickListener(v -> {
             clearForm();
@@ -310,63 +316,117 @@ public class RegisterLoginActivity extends AppCompatActivity {
     }
 
     private void handleLogin(String email, String password) {
-        String role = userDbHelper.getUserRole(email, password);
-        if (role == null) {
-            animateError(btnSubmit);
-            Toast.makeText(this, "Invalid email or password", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        DatabaseHelper.setCurrentUserEmail(email);
-        SharedPreferences sessionPrefs = getSharedPreferences("session", MODE_PRIVATE);
-        sessionPrefs.edit()
-                .putString("current_user_email", email)
-                .putString("user_role", role)
-                .apply();
-        SharedPreferences prefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        if (cbRememberMe.isChecked()) {
-            editor.putBoolean(PREF_REMEMBER, true);
-            editor.putString(PREF_EMAIL, email);
-            editor.putString(PREF_PASSWORD, password);
-        } else {
-            editor.putBoolean(PREF_REMEMBER, false);
-            editor.remove(PREF_EMAIL);
-            editor.remove(PREF_PASSWORD);
-        }
-        editor.apply();
-        animateSuccess(btnSubmit);
+        // Show loading state
+        btnSubmit.setEnabled(false);
+        btnSubmit.setText("Logging in...");
 
-        if (role.equals("CARE_PROVIDER")) {
-            startActivity(new Intent(this, CareProviderDashboardActivity.class));
-            finish();
-            return;
-        }
+        FirebaseAuthHelper.login(email, password, new FirebaseAuthHelper.AuthCallback() {
+            @Override
+            public void onSuccess(String uid) {
+                // Keep your existing role detection from local DB
+                String role = userDbHelper.getUserRole(email, password);
+                if (role == null) role = "PATIENT"; // fallback
 
-        // Patient routing (existing logic)
-        boolean hasCompleteProfile = userDbHelper.hasCompleteDemographicData(email);
-        if (!hasCompleteProfile) {
-            Intent intent = new Intent(RegisterLoginActivity.this, UserProfileActivity.class);
-            intent.putExtra("from_login", true);
-            startActivity(intent);
-        } else {
-            boolean hasCompletedOnboarding = prefs.getBoolean("completed_onboarding_" + email, false);
-            if (hasCompletedOnboarding) {
-                startActivity(new Intent(RegisterLoginActivity.this, DashboardActivity.class));
-            } else {
-                startActivity(new Intent(RegisterLoginActivity.this, StepsActivity.class));
+                // Your existing session storage (keep as is)
+                DatabaseHelper.setCurrentUserEmail(email);
+                UserDatabaseHelper.setCurrentUserEmail(email);
+
+                SharedPreferences sessionPrefs = getSharedPreferences("session", MODE_PRIVATE);
+                sessionPrefs.edit()
+                        .putString("current_user_email", email)
+                        .putString("user_role", role)
+                        .apply();
+
+                // Save Firebase session (uid + role)
+
+
+                FirebaseAuthHelper.saveSession(getApplicationContext(), uid, role);
+                final String finalRole = role;
+                userDbHelper.updateUserPassword(email, password);
+
+
+
+                new SyncManager(getApplicationContext()).pushAllDirtyData(new SyncManager.SyncCallback() {
+
+                    @Override
+                        public void onSuccess() {
+                            Log.d(TAG, "Sync completed for: " + email + " role: " + finalRole);
+                        }
+                        @Override
+                        public void onFailure(String error) {
+                            Log.e(TAG, "Sync failed: " + error);
+                        }
+                    });
+
+                // Remember me logic (keep as is)
+                SharedPreferences prefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
+                SharedPreferences.Editor editor = prefs.edit();
+                if (cbRememberMe.isChecked()) {
+                    editor.putBoolean(PREF_REMEMBER, true);
+                    editor.putString(PREF_EMAIL, email);
+                    editor.putString(PREF_PASSWORD, password);
+                } else {
+                    editor.putBoolean(PREF_REMEMBER, false);
+                    editor.remove(PREF_EMAIL);
+                    editor.remove(PREF_PASSWORD);
+                }
+                editor.apply();
+
+                animateSuccess(btnSubmit);
+                btnSubmit.setEnabled(true);
+                btnSubmit.setText("Login");
+
+                // Your existing navigation logic (keep as is)
+                if (role.equals("CARE_PROVIDER")) {
+                    startActivity(new Intent(RegisterLoginActivity.this,
+                            CareProviderDashboardActivity.class));
+                    finish();
+                    return;
+                }
+
+                boolean hasCompleteProfile = userDbHelper.hasCompleteDemographicData(email);
+                if (!hasCompleteProfile) {
+                    Intent intent = new Intent(RegisterLoginActivity.this,
+                            UserProfileActivity.class);
+                    intent.putExtra("from_login", true);
+                    startActivity(intent);
+                } else {
+                    SharedPreferences userPrefs = getSharedPreferences("user_prefs", MODE_PRIVATE);
+                    boolean hasCompletedOnboarding = userPrefs.getBoolean(
+                            "completed_onboarding_" + email, false);
+                    if (hasCompletedOnboarding) {
+                        startActivity(new Intent(RegisterLoginActivity.this,
+                                DashboardActivity.class));
+                    } else {
+                        startActivity(new Intent(RegisterLoginActivity.this,
+                                StepsActivity.class));
+                    }
+                }
+                finish();
             }
-        }
-        finish();
+
+            @Override
+            public void onFailure(String errorMessage) {
+                btnSubmit.setEnabled(true);
+                btnSubmit.setText("Login");
+                animateError(btnSubmit);
+                Toast.makeText(RegisterLoginActivity.this,
+                        "Login failed: " + errorMessage, Toast.LENGTH_LONG).show();
+            }
+        });
     }
+
 
     private void handleCareProviderRegistration() {
         String name = etCpName.getText() != null ? etCpName.getText().toString().trim() : "";
         String medicalId = etCpMedicalId.getText() != null ? etCpMedicalId.getText().toString().trim() : "";
         String email = etCpEmail.getText() != null ? etCpEmail.getText().toString().trim() : "";
         String password = etCpPassword.getText() != null ? etCpPassword.getText().toString().trim() : "";
-        String confirmPassword = etCpConfirmPassword.getText() != null ? etCpConfirmPassword.getText().toString().trim() : "";
+        String confirmPassword = etCpConfirmPassword.getText() != null ?
+                etCpConfirmPassword.getText().toString().trim() : "";
 
-        if (name.isEmpty() || medicalId.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+        if (name.isEmpty() || medicalId.isEmpty() || email.isEmpty() ||
+                password.isEmpty() || confirmPassword.isEmpty()) {
             Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -382,29 +442,64 @@ public class RegisterLoginActivity extends AppCompatActivity {
             Toast.makeText(this, "Passwords do not match!", Toast.LENGTH_SHORT).show();
             return;
         }
-        long id = userDbHelper.registerCareProvider(name, medicalId, email, password);
-        if (id > 0) {
-            Toast.makeText(this, "Care Provider registered! Please login.", Toast.LENGTH_LONG).show();
-            animateSuccess(btnSubmit);
-            isLoginMode = true;
-            isCareProviderTab = false;
-            tabLayout.getTabAt(0).select();
-            updateTabUI();
-            updateUI();
-            etEmail.setText(email);
-            etPassword.setText("");
-        } else if (id == -1) {
-            Toast.makeText(this, "Email already registered", Toast.LENGTH_SHORT).show();
-            animateError(btnSubmit);
-        } else if (id == -2) {
-            Toast.makeText(this, "Medical ID already in use", Toast.LENGTH_SHORT).show();
-            animateError(btnSubmit);
-        } else {
-            Toast.makeText(this, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show();
-            animateError(btnSubmit);
-        }
 
+        btnSubmit.setEnabled(false);
+        btnSubmit.setText("Registering...");
+
+        // Step 1: Create Firebase Auth account first
+        FirebaseAuthHelper.signUp(email, password, new FirebaseAuthHelper.AuthCallback() {
+            @Override
+            public void onSuccess(String uid) {
+                // Step 2: Save care provider locally (your existing logic)
+                long id = userDbHelper.registerCareProvider(name, medicalId, email, password);
+
+                // Save Firebase session
+                FirebaseAuthHelper.saveSession(getApplicationContext(), uid, "CARE_PROVIDER");
+                new SyncManager(getApplicationContext()).pushAllDirtyData(null);
+                UserDatabaseHelper.setCurrentUserEmail(email);
+                DatabaseHelper.setCurrentUserEmail(email);
+
+                btnSubmit.setEnabled(true);
+                btnSubmit.setText("Register");
+
+                if (id > 0) {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Care Provider registered! Please login.", Toast.LENGTH_LONG).show();
+                    animateSuccess(btnSubmit);
+                    isLoginMode = true;
+                    isCareProviderTab = false;
+                    tabLayout.getTabAt(0).select();
+                    updateTabUI();
+                    updateUI();
+                    etEmail.setText(email);
+                    etPassword.setText("");
+                } else if (id == -2) {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Medical ID already in use", Toast.LENGTH_SHORT).show();
+                    animateError(btnSubmit);
+                } else {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Registration failed. Please try again.", Toast.LENGTH_SHORT).show();
+                    animateError(btnSubmit);
+                }
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                btnSubmit.setEnabled(true);
+                btnSubmit.setText("Register");
+                animateError(btnSubmit);
+                if (errorMessage != null && errorMessage.contains("email address is already in use")) {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Email already registered", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Registration failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
     }
+
 
     private void handleRegistration(String email, String password, String dateOfBirth) {
         float weightPounds;
@@ -414,59 +509,95 @@ public class RegisterLoginActivity extends AppCompatActivity {
             heightFeet = Integer.parseInt(etHeightFeet.getText().toString());
             heightInches = Integer.parseInt(etHeightInches.getText().toString());
             if (weightPounds <= 0 || weightPounds > 1000) {
-                Toast.makeText(this, "Please enter a valid weight (1-1000 pounds)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please enter a valid weight (1-1000 pounds)",
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
             if (heightFeet <= 0 || heightFeet > 8) {
-                Toast.makeText(this, "Please enter a valid height (1-8 feet)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please enter a valid height (1-8 feet)",
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
             if (heightInches < 0 || heightInches > 11) {
-                Toast.makeText(this, "Please enter valid inches (0-11)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please enter valid inches (0-11)",
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
         } catch (NumberFormatException e) {
-            Toast.makeText(this, "Please enter valid numbers for height and weight", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Please enter valid numbers for height and weight",
+                    Toast.LENGTH_SHORT).show();
             return;
         }
-        float weightKg = userDbHelper.poundsToKg(weightPounds);
-        float heightM = userDbHelper.feetInchesToMeters(heightFeet, heightInches);
-        float bmi = userDbHelper.calculateBMI(weightKg, heightM);
-        long userId = userDbHelper.registerUser(
-                email, password, dateOfBirth,
-                selectedSex, selectedRace, selectedRelationshipStatus,
-                weightKg, heightM, bmi
-        );
 
-        if (userId > 0) {
-            // Brand‑new patient registration
-            Toast.makeText(this, "Registration successful! Please login.", Toast.LENGTH_LONG).show();
-            animateSuccess(btnSubmit);
-            isLoginMode = true;
-            updateUI();
-            etEmail.setText(email);
-            etPassword.setText("");
-        } else if (userId == -1) {
-            // Email already exists
-            if (userDbHelper.isUserRegistered(email)
-                    && userDbHelper.isPatientLinkedToAnyProvider(email)) {
-                // Provider-created patient: send to activation flow
-                Intent intent = new Intent(this, ActivateAccountActivity.class);
-                intent.putExtra("email", email);
-                startActivity(intent);
-            } else {
-                // Normal existing user: just ask them to log in
-                Toast.makeText(this,
-                        "An account with this email already exists. Please log in.",
-                        Toast.LENGTH_LONG).show();
-                animateError(btnSubmit);
+        btnSubmit.setEnabled(false);
+        btnSubmit.setText("Registering...");
+
+        // Step 1: Create Firebase Auth account first
+        FirebaseAuthHelper.signUp(email, password, new FirebaseAuthHelper.AuthCallback() {
+            @Override
+            public void onSuccess(String uid) {
+                // Step 2: Save profile locally (your existing logic)
+                float weightKg = userDbHelper.poundsToKg(weightPounds);
+                float heightM = userDbHelper.feetInchesToMeters(heightFeet, heightInches);
+                float bmi = userDbHelper.calculateBMI(weightKg, heightM);
+
+                long userId = userDbHelper.registerUser(
+                        email, password, dateOfBirth,
+                        selectedSex, selectedRace, selectedRelationshipStatus,
+                        weightKg, heightM, bmi
+                );
+
+                // Save Firebase session
+                FirebaseAuthHelper.saveSession(getApplicationContext(), uid, "PATIENT");
+                new SyncManager(getApplicationContext()).pushAllDirtyData(null);
+                UserDatabaseHelper.setCurrentUserEmail(email);
+                DatabaseHelper.setCurrentUserEmail(email);
+
+                btnSubmit.setEnabled(true);
+                btnSubmit.setText("Register");
+
+                if (userId > 0 || userId == -1) {
+                    // userId == -1 means local already exists (provider-created patient)
+                    // Firebase account was still created successfully
+                    if (userId == -1 && userDbHelper.isPatientLinkedToAnyProvider(email)) {
+                        Intent intent = new Intent(RegisterLoginActivity.this,
+                                ActivateAccountActivity.class);
+                        intent.putExtra("email", email);
+                        startActivity(intent);
+                    } else {
+                        Toast.makeText(RegisterLoginActivity.this,
+                                "Registration successful! Please login.", Toast.LENGTH_LONG).show();
+                        animateSuccess(btnSubmit);
+                        isLoginMode = true;
+                        updateUI();
+                        etEmail.setText(email);
+                        etPassword.setText("");
+                    }
+                } else {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Registration failed. Please try again.", Toast.LENGTH_SHORT).show();
+                    animateError(btnSubmit);
+                }
             }
-        } else {
-            Toast.makeText(this, "Registration failed. Please try again.", Toast.LENGTH_SHORT).show();
-            animateError(btnSubmit);
-        }
 
+            @Override
+            public void onFailure(String errorMessage) {
+                btnSubmit.setEnabled(true);
+                btnSubmit.setText("Register");
+                animateError(btnSubmit);
+                // Firebase account already exists with this email
+                if (errorMessage != null && errorMessage.contains("email address is already in use")) {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "An account with this email already exists. Please log in.",
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Registration failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
     }
+
 
     private void clearForm() {
         // Patient fields
@@ -527,6 +658,8 @@ public class RegisterLoginActivity extends AppCompatActivity {
         tvHeightLabel.setVisibility(regVisibility);
         heightLayout.setVisibility(regVisibility);
         cbRememberMe.setVisibility(isLoginMode ? View.VISIBLE : View.GONE);
+        tvForgotPassword.setVisibility(isLoginMode ? View.VISIBLE : View.GONE);
+
 
         updateTabUI();
     }
@@ -540,6 +673,51 @@ public class RegisterLoginActivity extends AppCompatActivity {
         animatorSet.setInterpolator(new BounceInterpolator());
         animatorSet.start();
     }
+    private void showForgotPasswordDialog() {
+        TextInputEditText emailInput = new TextInputEditText(this);
+        emailInput.setHint("Enter your email");
+        emailInput.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+
+        // Pre-fill if email already typed
+        String currentEmail = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
+        if (!currentEmail.isEmpty()) emailInput.setText(currentEmail);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Reset Password")
+                .setMessage("Enter your email and we'll send a reset link.")
+                .setView(emailInput)
+                .setPositiveButton("Send Reset Link", (dialog, which) -> {
+                    String email = emailInput.getText() != null ?
+                            emailInput.getText().toString().trim() : "";
+
+                    if (email.isEmpty() || !isValidEmail(email)) {
+                        Toast.makeText(this, "Please enter a valid email",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    sendPasswordResetEmail(email);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void sendPasswordResetEmail(String email) {
+        com.google.firebase.auth.FirebaseAuth.getInstance()
+                .sendPasswordResetEmail(email)
+                .addOnSuccessListener(unused -> {
+                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("Email Sent ✓")
+                            .setMessage("A password reset link has been sent to:\n\n" + email
+                                    + "\n\nCheck your inbox and follow the link to reset your password.")
+                            .setPositiveButton("OK", null)
+                            .show();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to send reset email: "
+                            + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+    }
+
 
     private void animateError(Button button) {
         ObjectAnimator animator = ObjectAnimator.ofFloat(button, "translationX",
@@ -556,4 +734,5 @@ public class RegisterLoginActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
     }
+
 }

@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import com.example.myapplication.SyncManager;
+
 
 public class QuestionnaireViewModel extends AndroidViewModel {
     private final MutableLiveData<Integer> currentSection;
@@ -115,6 +117,7 @@ public class QuestionnaireViewModel extends AndroidViewModel {
                     ));
                 }
                 dbHelper.getQuestionnaireDao().insertResponses(responseList);
+                new SyncManager(getApplication()).pushAllDirtyData(null);
                 new Handler(Looper.getMainLooper()).post(onComplete);
             }
         });

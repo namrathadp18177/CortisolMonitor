@@ -6,7 +6,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- EXISTING CONTENT — nothing changed inside here -->
     <RelativeLayout
         android:id="@+id/mainContent"
         android:layout_width="match_parent"
@@ -20,7 +19,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/colorPrimary"
             android:elevation="4dp"
-            app:title="Raw Optical Signal"
+            app:title="Measure Cortisol"
             app:titleTextColor="@color/white" />
 
         <LinearLayout
@@ -43,27 +42,29 @@
                 android:textColor="@color/white" />
 
             <Button
-                android:id="@+id/buttonStopBL"
+                android:id="@+id/buttonConnectBL"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
-                android:backgroundTint="@color/colorAccent"
-                android:onClick="onClickStop"
-                android:text="STOP"
+                android:backgroundTint="@color/colorPrimary"
+                android:onClick="onClickConnect"
+                android:text="CONNECT"
                 android:textColor="@color/white" />
 
+            <!-- NEW: QR Connect button -->
             <Button
-                android:id="@+id/buttonConnectBL"
+                android:id="@+id/buttonQRConnectBL"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 android:backgroundTint="@color/colorPrimary"
-                android:onClick="onClickConnect"
-                android:text="CONNECT"
+                android:onClick="onClickQRConnect"
+                android:text="SCAN QR"
                 android:textColor="@color/white" />
+
         </LinearLayout>
 
         <LinearLayout
@@ -75,29 +76,6 @@
             android:padding="8dp">
 
             <Button
-                android:id="@+id/buttonSettingBL"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/colorTextSecondary"
-                android:onClick="onClickSetting"
-                android:text="SETTINGS"
-                android:textColor="@color/white" />
-
-            <Button
-                android:id="@+id/buttonSaveBL"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/colorTextSecondary"
-                android:onClick="onClickSave"
-                android:text="SAVE"
-                android:textColor="@color/white" />
-
-            <Button
                 android:id="@+id/buttonShowBL"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -107,6 +85,7 @@
                 android:onClick="onClickShow"
                 android:text="RESULTS"
                 android:textColor="@color/white" />
+
         </LinearLayout>
 
         <androidx.cardview.widget.CardView
@@ -125,25 +104,7 @@
                 android:padding="16dp"
                 android:text="Data Length: \nTime passed:"
                 android:textSize="16sp" />
-        </androidx.cardview.widget.CardView>
 
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_below="@id/infoCard"
-            android:layout_margin="8dp"
-            android:layout_alignParentBottom="true"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp">
-
-            <com.jjoe64.graphview.GraphView
-                android:id="@+id/graphViewBL"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingLeft="40dp"
-                android:paddingRight="16dp"
-                android:paddingTop="16dp"
-                android:paddingBottom="32dp" />
         </androidx.cardview.widget.CardView>
 
     </RelativeLayout>
@@ -154,5 +115,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone" />
+
+    <!-- Invisible developer mode tap catcher -->
+    <View
+        android:id="@+id/devTapOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:clickable="false"
+        android:focusable="false" />
 
 </FrameLayout>

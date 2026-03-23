@@ -712,6 +712,7 @@ public class QuestionnaireActivity extends AppCompatActivity {
                 response.setUserEmail(userEmail);
 
                 dbHelper.getQuestionnaireDao().insertResponse(response);
+                new SyncManager(getApplicationContext()).pushAllDirtyData(null);
             }
 
             // Get or create questionnaire summary
