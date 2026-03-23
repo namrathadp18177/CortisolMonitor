@@ -43,8 +43,12 @@ public class BiomarkerInstructions extends AppCompatActivity {
                 // Role and email coming into this screen
                 String userRole = getIntent().getStringExtra("user_role");
                 String userEmail = getIntent().getStringExtra("user_email");
+                int startStep    = getIntent().getIntExtra("start_step", 0);
+                android.util.Log.d("STEP_DEBUG", "BiomarkerInstructions received start_step: " + startStep);
+
 
                 intent.putExtra("user_role", userRole);
+                intent.putExtra("start_step", startStep);
 
                 if ("CARE_PROVIDER".equals(userRole)) {
                     // In care provider mode, user_email here should be the PATIENT email

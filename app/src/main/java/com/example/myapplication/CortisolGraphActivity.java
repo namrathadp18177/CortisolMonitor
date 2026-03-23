@@ -163,12 +163,14 @@ public class CortisolGraphActivity extends AppCompatActivity {
         tableDays.addView(divider);
     }
 
+
     private void openResultForDay(long dayTimestamp) {
-        Intent intent = new Intent(this, ResultActivity.class);
+        Intent intent = new Intent(this, PatientResultsActivity.class);
         intent.putExtra("useremail", userEmail);
         intent.putExtra("selected_date", dayTimestamp);
         startActivity(intent);
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

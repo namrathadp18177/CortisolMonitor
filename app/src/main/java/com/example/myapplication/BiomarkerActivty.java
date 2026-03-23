@@ -3,7 +3,6 @@ package com.example.myapplication;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -27,6 +26,25 @@ public class BiomarkerActivty extends AppCompatActivity {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
+        String role     = getIntent().getStringExtra("user_role");
+        int startStep   = getIntent().getIntExtra("start_step", 0);
+        String patientEmail = getIntent().getStringExtra("patient_email");
+
+        android.util.Log.d("STEP_DEBUG", "BiomarkerActivty received start_step: " + startStep);
+
+        // Care provider with a step selected — skip Bluetooth screen entirely
+        if ("CARE_PROVIDER".equals(role) && startStep > 0) {
+            android.util.Log.d("STEP_DEBUG", "BiomarkerActivty skipping to QRWizard with step: " + startStep);
+            Intent intent = new Intent(this, QRWizardActivity.class);
+            intent.putExtra("user_email", patientEmail);
+            intent.putExtra("user_role", role);
+            intent.putExtra("start_step", startStep);
+            startActivity(intent);
+            finish();
+            return; // stop onCreate here, don't set up the button
+        }
+
+        // Normal flow — patient or care provider starting from step 0
         btnConnectBluetooth = findViewById(R.id.btnConnectBluetooth);
         setupClickListeners();
     }
@@ -35,6 +53,7 @@ public class BiomarkerActivty extends AppCompatActivity {
         btnConnectBluetooth.setOnClickListener(v -> {
 
             String role = getIntent().getStringExtra("user_role");
+            int startStep = getIntent().getIntExtra("start_step", 0);
 
             String currentUserEmail;
             if ("CARE_PROVIDER".equals(role)) {
@@ -54,6 +73,7 @@ public class BiomarkerActivty extends AppCompatActivity {
             Intent intent = new Intent(BiomarkerActivty.this, QRWizardActivity.class);
             intent.putExtra("user_email", currentUserEmail);
             intent.putExtra("user_role", role);
+            intent.putExtra("start_step", startStep);
             startActivity(intent);
         });
     }

@@ -100,6 +100,8 @@
         <activity
             android:name=".QRWizardActivity"
             android:exported="false" />
+        <activity android:name=".PatientResultsActivity" />
+
 
 
 

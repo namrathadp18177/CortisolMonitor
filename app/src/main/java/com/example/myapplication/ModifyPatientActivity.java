@@ -4,11 +4,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,7 +18,6 @@ public class ModifyPatientActivity extends AppCompatActivity {
     private String currentCpEmail;
     private String providerMedicalId;
 
-    // keep adapter and list as fields so we can refresh
     private PatientCardAdapter adapter;
     private final List<UserDatabaseHelper.CpPatientInfo> patients = new ArrayList<>();
 
@@ -34,43 +32,85 @@ public class ModifyPatientActivity extends AppCompatActivity {
 
         rvPatients = findViewById(R.id.rvPatients);
 
-        // set up adapter once
-        adapter = new PatientCardAdapter(patients, new PatientCardAdapter.OnPatientClickListener() {
-            @Override
-            public void onPatientClick(UserDatabaseHelper.CpPatientInfo info) {
-                Intent intent = new Intent(ModifyPatientActivity.this, EditPatientActivity.class);
-                intent.putExtra("patient_email", info.email);
-                intent.putExtra("patient_id", info.patientId);
-                intent.putExtra("user_role", "CARE_PROVIDER");
-                startActivity(intent);
-            }
-        });
+        adapter = new PatientCardAdapter(patients, info -> showPatientOptionsDialog(info));
         rvPatients.setAdapter(adapter);
 
-        // initial load
         loadPatients();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // reload every time we come back to this screen
         loadPatients();
     }
 
     private void loadPatients() {
-        // query fresh list from DB
         List<UserDatabaseHelper.CpPatientInfo> latest =
                 dbHelper.getPatientsForProvider(providerMedicalId);
-
         patients.clear();
-        if (latest != null) {
-            patients.addAll(latest);
-        }
+        if (latest != null) patients.addAll(latest);
         adapter.notifyDataSetChanged();
     }
 
-    // Adapter class
+    // ── Step 1: Ask what to do with this patient ──
+    private void showPatientOptionsDialog(UserDatabaseHelper.CpPatientInfo info) {
+        String[] options = {
+                "Edit Patient Details",
+                "Start Test for this Patient"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle(info.name != null ? info.name : info.email)
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        // existing edit flow — unchanged
+                        Intent intent = new Intent(this, EditPatientActivity.class);
+                        intent.putExtra("patient_email", info.email);
+                        intent.putExtra("patient_id", info.patientId);
+                        intent.putExtra("user_role", "CARE_PROVIDER");
+                        startActivity(intent);
+                    } else {
+                        // new: show step selector
+                        showStepSelectorDialog(info);
+                    }
+                })
+                .setCancelable(true)
+                .show();
+    }
+
+    // ── Step 2: Ask which step to start from ──
+    private void showStepSelectorDialog(UserDatabaseHelper.CpPatientInfo info) {
+        String[] steps = {
+                "Step 1: Scan tube QR",
+                "Step 2: Collect saliva",
+                "Step 3: Scan cartridge and add sample",
+                "Step 4: Insert the cartridge to analyser",
+                "Step 5: Measure cortisol"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Where would you like to start?")
+                .setItems(steps, (dialog, which) -> launchBiomarker(info, which))
+                .setCancelable(true)
+                .show();
+    }
+
+
+    // ── Step 3: Launch BiomarkerInstructions with patient + step ──
+    private void launchBiomarker(UserDatabaseHelper.CpPatientInfo info, int startStep) {
+        android.util.Log.d("STEP_DEBUG", "ModifyPatient launching with start_step: " + startStep);
+
+        // Skip BiomarkerInstructions for care providers — go straight to BiomarkerActivty
+        Intent intent = new Intent(this, BiomarkerActivty.class);
+        intent.putExtra("user_role", "CARE_PROVIDER");
+        intent.putExtra("patient_email", info.email);
+        intent.putExtra("start_step", startStep);
+        startActivity(intent);
+    }
+
+
+
+    // ── Adapter ──
     public static class PatientCardAdapter extends RecyclerView.Adapter<PatientCardAdapter.PatientViewHolder> {
 
         public interface OnPatientClickListener {
@@ -112,7 +152,7 @@ public class ModifyPatientActivity extends AppCompatActivity {
 
             public PatientViewHolder(@NonNull View itemView) {
                 super(itemView);
-                tvPatientId = itemView.findViewById(R.id.tvPatientId);
+                tvPatientId   = itemView.findViewById(R.id.tvPatientId);
                 tvPatientName = itemView.findViewById(R.id.tvPatientName);
             }
 
@@ -120,12 +160,8 @@ public class ModifyPatientActivity extends AppCompatActivity {
                       final OnPatientClickListener listener) {
                 tvPatientId.setText(info.patientId);
                 tvPatientName.setText(info.name != null ? info.name : info.email);
-
-                itemView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (listener != null) listener.onPatientClick(info);
-                    }
+                itemView.setOnClickListener(v -> {
+                    if (listener != null) listener.onPatientClick(info);
                 });
             }
         }

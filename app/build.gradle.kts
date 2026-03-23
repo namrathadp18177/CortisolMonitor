@@ -66,6 +66,8 @@ dependencies {
 
     // GraphView dependency
     implementation(project(":GraphView-master"))
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
 
     // USB Serial Library
     implementation("com.github.felHR85:UsbSerial:6.1.0")
@@ -75,6 +77,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+
 
     // ML Kit QR scanning
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
