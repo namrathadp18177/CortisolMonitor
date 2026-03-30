@@ -1,7 +1,12 @@
 package com.example.myapplication;
 
+import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -12,22 +17,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.util.List;
-import java.util.Locale;
-
 public class PatientHistoryDetailActivity extends AppCompatActivity {
 
-    private TextView tvName;
-    private TextView tvEmail;
-    private TextView tvBmi;
-    private TextView tvWeight;
-    private TextView tvHeight;
-    private TextView tvConditions;
-    private TextView tvCortisolHeader;
+    private TextView tvName, tvEmail, tvBmi, tvWeight, tvHeight,
+            tvConditions, tvCortisolHeader;
     private LinearLayout llCortisolHistory;
 
     private UserDatabaseHelper userDb;
@@ -45,7 +41,7 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
         }
 
         userDb = UserDatabaseHelper.getInstance(this);
-        appDb = DatabaseHelper.getInstance(this);
+        appDb  = DatabaseHelper.getInstance(this);
 
         patientEmail = getIntent().getStringExtra("patient_email");
         if (patientEmail == null || patientEmail.isEmpty()) {
@@ -60,21 +56,18 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        tvName = findViewById(R.id.tvName);
-        tvEmail = findViewById(R.id.tvEmail);
-        tvBmi = findViewById(R.id.tvBmi);
-        tvWeight = findViewById(R.id.tvWeight);
-        tvHeight = findViewById(R.id.tvHeight);
-        tvConditions = findViewById(R.id.tvConditions);
-        tvCortisolHeader = findViewById(R.id.tvCortisolHeader);
+        tvName            = findViewById(R.id.tvName);
+        tvEmail           = findViewById(R.id.tvEmail);
+        tvBmi             = findViewById(R.id.tvBmi);
+        tvWeight          = findViewById(R.id.tvWeight);
+        tvHeight          = findViewById(R.id.tvHeight);
+        tvConditions      = findViewById(R.id.tvConditions);
+        tvCortisolHeader  = findViewById(R.id.tvCortisolHeader);
         llCortisolHistory = findViewById(R.id.llCortisolHistory);
     }
 
     private void loadPatientOverview() {
-        // 1) basic info from users table
-        float weightKg = 0f;
-        float heightM = 0f;
-        float bmi = 0f;
+        float weightKg = 0f, heightM = 0f, bmi = 0f;
 
         Cursor c = userDb.getReadableDatabase().query(
                 "users",
@@ -85,14 +78,12 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
         );
         if (c != null && c.moveToFirst()) {
             weightKg = c.getFloat(c.getColumnIndexOrThrow("weight_kg"));
-            heightM = c.getFloat(c.getColumnIndexOrThrow("height_m"));
-            bmi = c.getFloat(c.getColumnIndexOrThrow("bmi"));
+            heightM  = c.getFloat(c.getColumnIndexOrThrow("height_m"));
+            bmi      = c.getFloat(c.getColumnIndexOrThrow("bmi"));
         }
         if (c != null) c.close();
 
-        // 2) name + conditions from cp_patient_info (any CP)
-        String name = null;
-        String conditions = null;
+        String name = null, conditions = null;
         Cursor cp = null;
         try {
             cp = userDb.getReadableDatabase().query(
@@ -103,20 +94,17 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
                     },
                     UserDatabaseHelper.COL_CP_EMAIL + "=?",
                     new String[]{patientEmail},
-                    null, null, null,
-                    "1"
+                    null, null, null, "1"
             );
             if (cp != null && cp.moveToFirst()) {
-                name = cp.getString(cp.getColumnIndexOrThrow(UserDatabaseHelper.COL_CP_NAME));
+                name       = cp.getString(cp.getColumnIndexOrThrow(UserDatabaseHelper.COL_CP_NAME));
                 conditions = cp.getString(cp.getColumnIndexOrThrow(UserDatabaseHelper.COL_CP_MEDICAL_CONDITIONS));
             }
         } finally {
             if (cp != null) cp.close();
         }
 
-        if (name == null || name.isEmpty()) {
-            name = "(no name)";
-        }
+        if (name == null || name.isEmpty()) name = "(no name)";
 
         tvName.setText(name);
         tvEmail.setText(patientEmail);
@@ -125,11 +113,10 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
         tvBmi.setText(String.format(Locale.US, "BMI: %.1f", bmi));
 
         if (conditions != null && !conditions.isEmpty()) {
-            String[] lines = conditions.split("\n");
             StringBuilder sb = new StringBuilder();
-            for (String line : lines) {
-                if (line.trim().isEmpty()) continue;
-                sb.append("• ").append(line.trim()).append("\n");
+            for (String line : conditions.split("\n")) {
+                if (!line.trim().isEmpty())
+                    sb.append("• ").append(line.trim()).append("\n");
             }
             tvConditions.setText(sb.toString().trim());
         } else {
@@ -140,58 +127,98 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
     private void loadCortisolHistory() {
         llCortisolHistory.removeAllViews();
 
-        // get last 10 experiments for this patient
         List<DatabaseHelper.BiomarkerExperimentSummary> exps =
                 appDb.getLatestBiomarkerExperiments(patientEmail, 10);
 
         if (exps == null || exps.isEmpty()) {
-            tvCortisolHeader.setText("Cortisol history (no data)");
+            tvCortisolHeader.setText("Cortisol History (no data)");
             return;
         }
 
-        tvCortisolHeader.setText("Cortisol history");
+        tvCortisolHeader.setText("Cortisol History  —  Tap a result to view details");
 
-        // format: date + time
-        SimpleDateFormat dateTimeFormat =
-                new SimpleDateFormat("MMM dd, yyyy  HH:mm", Locale.getDefault());
-        dateTimeFormat.setTimeZone(TimeZone.getDefault());
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy  HH:mm", Locale.getDefault());
+        sdf.setTimeZone(TimeZone.getDefault());
 
         for (DatabaseHelper.BiomarkerExperimentSummary exp : exps) {
-            long correctedTs = correctTimestamp(exp.timestamp); // reuse your helper if you copy it here
-            String dateTime = dateTimeFormat.format(new Date(correctedTs));
+            long correctedTs = correctTimestamp(exp.timestamp);
+            double cortisol  = calculateCortisol(exp.maxValue);
 
-            // use same formula as ResultActivity
-            double cortisol = calculateCortisol(exp.maxValue);
+            // ── Row ──
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(16, 14, 16, 14);
+            row.setBackgroundColor(Color.WHITE);
 
-            String displayLine;
-            if (cortisol <= 0) {
-                displayLine = String.format(
-                        Locale.US,
-                        "• %s  —  Level: Invalid",
-                        dateTime
-                );
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            rowParams.setMargins(0, 0, 0, 2);
+            row.setLayoutParams(rowParams);
+
+            // ── Date/time (left) ──
+            TextView tvDate = new TextView(this);
+            tvDate.setText(sdf.format(new Date(correctedTs)));
+            tvDate.setTextSize(14f);
+            tvDate.setTextColor(Color.parseColor("#546E7A"));
+            LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            tvDate.setLayoutParams(dateParams);
+            row.addView(tvDate);
+
+            // ── Cortisol badge (right) ──
+            TextView tvLevel = new TextView(this);
+            tvLevel.setTextSize(13f);
+            tvLevel.setTypeface(null, Typeface.BOLD);
+            tvLevel.setPadding(16, 6, 16, 6);
+
+            if (cortisol > 0) {
+                tvLevel.setText(String.format(Locale.US, "%.2f ng/mL", cortisol));
+                if (cortisol < 5.0) {
+                    tvLevel.setTextColor(Color.WHITE);
+                    tvLevel.setBackgroundColor(Color.parseColor("#2196F3")); // low - blue
+                } else if (cortisol <= 25.0) {
+                    tvLevel.setTextColor(Color.WHITE);
+                    tvLevel.setBackgroundColor(Color.parseColor("#4CAF50")); // normal - green
+                } else {
+                    tvLevel.setTextColor(Color.WHITE);
+                    tvLevel.setBackgroundColor(Color.parseColor("#F44336")); // high - red
+                }
             } else {
-                displayLine = String.format(
-                        Locale.US,
-                        "• %s  —  Level: %.2f ng/mL",
-                        dateTime,
-                        cortisol
-                );
+                tvLevel.setText("View Details");
+                tvLevel.setTextColor(Color.WHITE);
+                tvLevel.setBackgroundColor(Color.parseColor("#9E9E9E")); // gray
             }
 
-            TextView tv = new TextView(this);
-            tv.setText(displayLine);
-            tv.setTextSize(14);
-            tv.setTextColor(getResources().getColor(R.color.text_primary, null));
-            tv.setPadding(0, 4, 0, 4);
+            row.addView(tvLevel);
 
-            llCortisolHistory.addView(tv);
+            // ── Tap → PatientResultsActivity ──
+            final long tapTimestamp = correctedTs;
+            row.setOnClickListener(v -> {
+                Intent intent = new Intent(
+                        PatientHistoryDetailActivity.this,
+                        PatientResultsActivity.class);
+                intent.putExtra("useremail", patientEmail);
+                intent.putExtra("selected_date", tapTimestamp);
+                startActivity(intent);
+            });
+
+            row.setClickable(true);
+            row.setFocusable(true);
+            llCortisolHistory.addView(row);
+
+            // ── Divider ──
+            View divider = new View(this);
+            divider.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1));
+            divider.setBackgroundColor(Color.parseColor("#EEEEEE"));
+            llCortisolHistory.addView(divider);
         }
     }
+
     private long correctTimestamp(long timestamp) {
-        if (timestamp < 100000000000L) {
-            timestamp = timestamp * 1000L;
-        }
+        if (timestamp < 100000000000L) timestamp = timestamp * 1000L;
         return timestamp;
     }
 
@@ -202,8 +229,6 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
         }
         return -1.0;
     }
-
-
 
     @Override
     public boolean onSupportNavigateUp() {

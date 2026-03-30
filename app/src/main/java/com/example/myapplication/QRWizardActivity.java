@@ -163,11 +163,21 @@ public class QRWizardActivity extends AppCompatActivity {
             } else if (currentStep == STEP_WAIT) {
                 showStepInsertAnalyser();
             } else if (currentStep == 7) {
+                android.util.Log.d("HISTORY_DEBUG", "QRWizard launching OutputBluetooth");
+                android.util.Log.d("HISTORY_DEBUG", "  user_role = " + getIntent().getStringExtra("user_role"));
+                android.util.Log.d("HISTORY_DEBUG", "  user_email = " + getIntent().getStringExtra("user_email"));
+                android.util.Log.d("HISTORY_DEBUG", "  patient_email = " + getIntent().getStringExtra("patient_email"));
+
                 Intent intent = new Intent(this, OutputBluetooth.class);
                 intent.putExtra("tube_id", tubeId);
                 intent.putExtra("cartridge_id", cartridgeId);
                 intent.putExtra("sample_time", btnSampleTime.getText().toString());
+                intent.putExtra("user_role", getIntent().getStringExtra("user_role"));
+                intent.putExtra("user_email", getIntent().getStringExtra("user_email"));
+                intent.putExtra("patient_email", getIntent().getStringExtra("user_email")); // patient email
                 startActivity(intent);
+
+
             }
         });
 

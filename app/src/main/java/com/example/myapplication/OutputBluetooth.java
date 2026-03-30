@@ -216,12 +216,24 @@ public class OutputBluetooth extends AppCompatActivity {
             return false;
         });
         Intent intent = getIntent();
-        tubeId        = intent.getStringExtra("tube_id");
-        cartridgeId   = intent.getStringExtra("cartridge_id");
-        sampleTime    = intent.getStringExtra("sample_time");
+        tubeId = intent.getStringExtra("tube_id");
+        cartridgeId = intent.getStringExtra("cartridge_id");
+        sampleTime = intent.getStringExtra("sample_time");
         deviceAddress = intent.getStringExtra("device_address");
-        userEmail     = intent.getStringExtra("user_email");
-        userRole      = intent.getStringExtra("user_role");
+        userRole = intent.getStringExtra("user_role");
+
+// If care provider, save experiment under PATIENT's email, not CP's email
+        if ("CARE_PROVIDER".equals(userRole)) {
+            userEmail = intent.getStringExtra("patient_email");
+            if (userEmail == null || userEmail.isEmpty()) {
+                userEmail = intent.getStringExtra("user_email");
+            }
+        } else {
+            userEmail = intent.getStringExtra("user_email");
+        }
+
+        android.util.Log.d("HISTORY_DEBUG", "OutputBluetooth saving experiment for: [" + userEmail + "]");
+
 
 
 
