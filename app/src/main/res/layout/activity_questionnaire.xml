@@ -15,7 +15,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:text="Mental Health Symptom Screener"
-        android:textSize="24sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="@color/text_primary"
         android:textAlignment="center"
@@ -43,11 +43,11 @@
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
         android:layout_marginTop="16dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="16dp"
         android:text="Please answer the following questions honestly. Your responses will help us better understand your stress levels."
         android:textAlignment="center"
         android:textColor="@color/text_secondary"
-        android:textSize="16sp"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ivQuestionIcon" />
@@ -72,7 +72,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="16dp">
 
             <TextView
                 android:id="@+id/tvReadyToStart"
@@ -115,29 +115,29 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="16dp">
 
             <!-- Part Title -->
             <TextView
                 android:id="@+id/tvPartTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/primary"
                 android:layout_marginBottom="20dp"
-                android:textAlignment="center"/>
+                />
 
             <!-- Questions Container -->
             <ScrollView
+                android:overScrollMode="never"
                 android:id="@+id/scrollView"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:clipToPadding="false"
                 android:paddingBottom="16dp"
-                android:scrollbars="none"
-                android:overScrollMode="never">
+                android:scrollbars="none">
 
                 <LinearLayout
                     android:id="@+id/questionsContainer"

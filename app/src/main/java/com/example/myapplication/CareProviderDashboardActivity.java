@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
+import java.util.Calendar;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -17,6 +18,7 @@ import com.google.android.material.card.MaterialCardView;
 public class CareProviderDashboardActivity extends AppCompatActivity {
 
     private TextView tvWelcome;
+    private TextView tvWelcomeSubtitle;
     private TextView tvMedicalId;
     private MaterialCardView cardRegisterPatient;
     private MaterialCardView cardModifyPatient;
@@ -60,6 +62,7 @@ public class CareProviderDashboardActivity extends AppCompatActivity {
 
     private void initializeViews() {
         tvWelcome = findViewById(R.id.tvWelcome);
+        tvWelcomeSubtitle = findViewById(R.id.tvWelcomeSubtitle);
         tvMedicalId = findViewById(R.id.tvMedicalId);
         cardRegisterPatient = findViewById(R.id.cardRegisterPatient);
         cardModifyPatient = findViewById(R.id.cardModifyPatient);
@@ -73,12 +76,24 @@ public class CareProviderDashboardActivity extends AppCompatActivity {
 
         String displayName = (name == null || name.isEmpty())
                 ? (email != null && email.contains("@")
-                ? email.substring(0, email.indexOf("@"))
+                ? capitalize(email.substring(0, email.indexOf("@")))
                 : "Provider")
                 : name;
 
-        tvWelcome.setText("Welcome, Dr. " + displayName);
+        // Time-based greeting
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        String timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+        tvWelcome.setText(timeGreeting + ", Dr. " + displayName + "!");
+        if (tvWelcomeSubtitle != null) {
+            tvWelcomeSubtitle.setText("Here's your patient management overview.");
+        }
         tvMedicalId.setText("Medical ID: " + (medicalId == null ? "-" : medicalId));
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 
     private void setupClickListeners() {

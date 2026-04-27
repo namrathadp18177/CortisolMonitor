@@ -167,23 +167,32 @@ public class PatientResultsActivity extends AppCompatActivity {
             return;
         }
 
-        history.sort((a, b) -> Long.compare(a.timestamp, b.timestamp));
+        // ✅ Filter to selected day only — same as loadResults()
+        long dayStart = getStartOfDay(selectedDate);
+        long dayEnd   = getEndOfDay(selectedDate);
 
-        List<Entry> entries = new ArrayList<>();
-        List<String> dateLabels = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.getDefault());
-
-        for (int i = 0; i < history.size(); i++) {
-            DatabaseHelper.BiomarkerExperimentSummary exp = history.get(i);
-            if (exp.maxValue > 0) {
-                entries.add(new Entry(i, (float) exp.maxValue));
-                dateLabels.add(sdf.format(new Date(exp.timestamp)));
+        List<DatabaseHelper.BiomarkerExperimentSummary> dayHistory = new ArrayList<>();
+        for (DatabaseHelper.BiomarkerExperimentSummary exp : history) {
+            if (exp.timestamp >= dayStart && exp.timestamp <= dayEnd && exp.maxValue > 0) {
+                dayHistory.add(exp);
             }
         }
 
-        if (entries.isEmpty()) {
+        if (dayHistory.isEmpty()) {
             lineChart.setVisibility(View.GONE);
             return;
+        }
+
+        dayHistory.sort((a, b) -> Long.compare(a.timestamp, b.timestamp));
+
+        List<Entry> entries = new ArrayList<>();
+        List<String> dateLabels = new ArrayList<>();
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault()); // time only, same day
+
+        for (int i = 0; i < dayHistory.size(); i++) {
+            DatabaseHelper.BiomarkerExperimentSummary exp = dayHistory.get(i);
+            entries.add(new Entry(i, (float) exp.maxValue));
+            dateLabels.add(sdf.format(new Date(exp.timestamp)));
         }
 
         LineDataSet dataSet = new LineDataSet(entries, "Cortisol (ng/mL)");

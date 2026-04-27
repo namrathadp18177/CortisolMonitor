@@ -12,8 +12,8 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        android:elevation="4dp"
+        android:background="@color/toolbar_background"
+        android:elevation="0dp"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
         <LinearLayout
@@ -25,7 +25,7 @@
             <ImageButton
                 android:id="@+id/btnBack"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/back_button_description"
                  />
@@ -36,14 +36,15 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:text="@string/questionnaire_results_title"
-                android:textColor="@android:color/white"
-                android:textSize="20sp" />
+                android:textColor="@color/white"
+                android:textSize="18sp" />
 
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
     <!-- Scrollable Content -->
     <ScrollView
+        android:overScrollMode="never"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -59,13 +60,13 @@
     </ScrollView>
 
     <!-- Button for Biomarker Activity -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btnBiomarker"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:background="?attr/colorPrimary"
+        android:background="@color/toolbar_background"
         android:text="@string/continue_to_biomarker"
-        android:textColor="@android:color/white" />
+        android:textColor="@color/white" />
 
 </LinearLayout>

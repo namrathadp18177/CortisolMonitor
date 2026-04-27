@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -24,10 +26,27 @@ public class DeveloperModeActivity extends AppCompatActivity {
     private LineGraphSeries<DataPoint> seriesPort1;
     private LineGraphSeries<DataPoint> seriesAvg;
 
+    private TextView tvConnectionStatus;
+    private TextView tvBatteryLevel;
+    private TextView tvBatteryLevelCtrl;
+    private TextView tvBatteryStatusCtrl;
+
     private final Handler handler = new Handler();
 
     // Tracks last plotted index so we only append NEW points
     private int lastPlottedIndex = 0;
+
+    // Poll Char 4 (device status) every 2 seconds when connected
+    private final Runnable pollStatus = new Runnable() {
+        @Override
+        public void run() {
+            BluetoothManager mgr = BluetoothManager.getInstance(getApplicationContext());
+            if (mgr.isConnected()) {
+                mgr.requestStatus();
+            }
+            handler.postDelayed(this, 2000);
+        }
+    };
 
     // Update graph every 200ms
     private final Runnable updateGraph = new Runnable() {
@@ -59,6 +78,9 @@ public class DeveloperModeActivity extends AppCompatActivity {
 
                 lastPlottedIndex++;
             }
+
+            // Update connection status and battery level
+            updateDeviceStatus();
 
             handler.postDelayed(this, 200);
         }
@@ -94,9 +116,156 @@ public class DeveloperModeActivity extends AppCompatActivity {
             }
         });
 
+        tvConnectionStatus  = findViewById(R.id.devConnectionStatus);
+        tvBatteryLevel      = findViewById(R.id.devBatteryLevel);
+        tvBatteryLevelCtrl  = findViewById(R.id.devBatteryLevelCtrl);
+        tvBatteryStatusCtrl = findViewById(R.id.devBatteryStatusCtrl);
+
+        setupHardwareControls();
         setupGraph();
 
         handler.post(updateGraph);
+        handler.postDelayed(pollStatus, 500); // first status request after 500ms
+    }
+
+    /**
+     * Wire up the LED brightness and Gain SeekBars.
+     * Changes are written live to OutputBluetooth static fields and, if BLE is
+     * connected, forwarded to the hardware via BluetoothManager.
+     */
+    private void setupHardwareControls() {
+        SeekBar ledSeekBar   = findViewById(R.id.devLedSeekBar);
+        TextView ledValText  = findViewById(R.id.devLedValueText);
+        SeekBar gainSeekBar  = findViewById(R.id.devGainSeekBar);
+        TextView gainValText = findViewById(R.id.devGainValueText);
+
+        // Load persisted values if the user previously customised them; otherwise keep defaults
+        android.content.SharedPreferences hwPrefs =
+                getSharedPreferences("dev_hw_prefs", MODE_PRIVATE);
+        if (hwPrefs.getBoolean("user_customised", false)) {
+            OutputBluetooth.devLedBrightness = hwPrefs.getInt("led_brightness",
+                    OutputBluetooth.devLedBrightness);
+            OutputBluetooth.devGainWiper     = hwPrefs.getInt("gain_wiper",
+                    OutputBluetooth.devGainWiper);
+        }
+
+        // Initialise SeekBars from current (possibly restored) values
+        ledSeekBar.setProgress(OutputBluetooth.devLedBrightness);
+        ledValText.setText(String.valueOf(OutputBluetooth.devLedBrightness));
+        gainSeekBar.setProgress(OutputBluetooth.devGainWiper);
+        gainValText.setText(String.valueOf(OutputBluetooth.devGainWiper));
+
+        ledSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                ledValText.setText(String.valueOf(progress));
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress();
+                OutputBluetooth.devLedBrightness = value;
+                // Persist so subsequent test sessions use the same value
+                getSharedPreferences("dev_hw_prefs", MODE_PRIVATE).edit()
+                        .putInt("led_brightness", value)
+                        .putBoolean("user_customised", true)
+                        .apply();
+                BluetoothManager mgr = BluetoothManager.getInstance(
+                        getApplicationContext());
+                if (mgr.isConnected()) {
+                    mgr.setLedBrightness((byte) value);
+                    Log.i(TAG, "LED brightness set to " + value);
+                }
+            }
+        });
+
+        gainSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                gainValText.setText(String.valueOf(progress));
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress();
+                OutputBluetooth.devGainWiper = value;
+                // Persist so subsequent test sessions use the same value
+                getSharedPreferences("dev_hw_prefs", MODE_PRIVATE).edit()
+                        .putInt("gain_wiper", value)
+                        .putBoolean("user_customised", true)
+                        .apply();
+                BluetoothManager mgr = BluetoothManager.getInstance(
+                        getApplicationContext());
+                if (mgr.isConnected()) {
+                    mgr.setGain((byte) value);
+                    Log.i(TAG, "Gain wiper set to " + value);
+                }
+            }
+        });
+    }
+
+    /**
+     * Refreshes the connection-status and battery TextViews.
+     * Called every 200 ms from the updateGraph runnable.
+     *
+     * Battery decode (per hardware docs, Char 4):
+     *   vbatRaw  = 12-bit ADC count (0–4095) from GPIO26 (VBATSNS)
+     *   vbatVolts = vbatRaw * (3.3 / 4095)          [ESP32 analogRead scale]
+     *   batteryPct = ((vbatVolts - 3.3) / (4.2 - 3.3)) * 100  [LiPo 3.3–4.2V]
+     *
+     *   Battery Status: Active if BLE is connected and a valid battery reading exists.
+     *                   Inactive only when disconnected or no data received yet.
+     */
+    private void updateDeviceStatus() {
+        if (tvConnectionStatus == null || tvBatteryLevel == null) return;
+
+        BluetoothManager mgr = BluetoothManager.getInstance(getApplicationContext());
+        boolean connected = mgr.isConnected();
+
+        if (connected) {
+            String name = OutputBluetooth.devConnectedDeviceName;
+            if (name == null || name.isEmpty()) name = "Optical Detector";
+            tvConnectionStatus.setText("● " + name);
+            tvConnectionStatus.setTextColor(Color.parseColor("#388E3C")); // green
+        } else {
+            tvConnectionStatus.setText("● Disconnected");
+            tvConnectionStatus.setTextColor(Color.parseColor("#B00020")); // red
+        }
+
+        int vbatRaw = OutputBluetooth.devBatteryVbat;
+
+        int vbusRaw = OutputBluetooth.devBatteryVbus;
+
+        // Charging status: VBUS > 50 means USB plugged in → TP4065 is charging
+        boolean isCharging = vbusRaw > 50;
+
+        if (vbatRaw > 0) {
+            // V_BAT = (vbatRaw / 4095) × 3.3 / 0.2658   (divider: R9=442kΩ, R12=160kΩ)
+            // pct   = ((V_BAT - 3.0) / 1.2) × 100        (LiPo usable range: 3.0V–4.2V)
+            float vBat = (vbatRaw / 4095f) * 3.3f / 0.2658f;
+            int pct = (int) Math.max(0, Math.min(100, ((vBat - 3.0f) / 1.2f) * 100f));
+            String pctStr = pct + "%";
+
+            tvBatteryLevel.setText("Battery: " + pctStr);
+            if (tvBatteryLevelCtrl != null) tvBatteryLevelCtrl.setText(pctStr);
+        } else {
+            tvBatteryLevel.setText("Battery: —");
+            if (tvBatteryLevelCtrl != null) tvBatteryLevelCtrl.setText("—");
+        }
+
+        // Battery status
+        if (tvBatteryStatusCtrl != null) {
+            if (isCharging) {
+                tvBatteryStatusCtrl.setText("Charging");
+                tvBatteryStatusCtrl.setTextColor(Color.parseColor("#1565C0")); // blue
+            } else if (connected) {
+                tvBatteryStatusCtrl.setText("Active");
+                tvBatteryStatusCtrl.setTextColor(Color.parseColor("#388E3C")); // green
+            } else {
+                tvBatteryStatusCtrl.setText("Inactive");
+                tvBatteryStatusCtrl.setTextColor(Color.parseColor("#B00020")); // red
+            }
+        }
     }
 
     private void setupGraph() {
@@ -179,6 +348,7 @@ public class DeveloperModeActivity extends AppCompatActivity {
         super.onDestroy();
 
         handler.removeCallbacks(updateGraph);
+        handler.removeCallbacks(pollStatus);
 
         OutputBluetooth.devModeActive = false;
 

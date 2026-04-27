@@ -5,24 +5,39 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp"
     android:background="@color/background"
     tools:context=".RegisterPatientActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/toolbar_background"
+        android:elevation="4dp"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:title="Register Patient"
+        app:titleTextColor="@color/text_on_primary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <ImageView
         android:id="@+id/ivWellnessIcon"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:layout_marginTop="32dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/toolbar" />
 
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp"
         android:fillViewport="true"
         android:scrollbars="none"
         android:overScrollMode="never"
@@ -40,17 +55,17 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:padding="16dp">
 
                 <TextView
                     android:id="@+id/tvTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Register Patient"
-                    android:textSize="28sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
-                    android:textAlignment="center"
+                    
                     android:layout_marginBottom="24dp"/>
 
                 <LinearLayout
@@ -112,10 +127,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Sex"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="16dp"/>
 
                     <RadioGroup
                         android:id="@+id/rgSex"
@@ -131,7 +146,8 @@
                             android:layout_weight="1"
                             android:text="Male"
                             android:checked="true"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_primary"
+                            android:minHeight="48dp" />
 
                         <RadioButton
                             android:id="@+id/rbFemale"
@@ -139,7 +155,8 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Female"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_primary"
+                            android:minHeight="48dp" />
                     </RadioGroup>
 
                     <!-- Phone -->
@@ -163,10 +180,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Weight"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="16dp"/>
 
                     <LinearLayout
                         android:id="@+id/weightLayout"
@@ -192,7 +209,7 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:text="lbs"
-                            android:textSize="16sp"
+                            android:textSize="14sp"
                             android:gravity="center_vertical|start"
                             android:paddingStart="12dp"
                             android:textColor="@color/text_primary"/>
@@ -204,10 +221,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Height"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="16dp"/>
 
                     <LinearLayout
                         android:id="@+id/heightLayout"
@@ -232,7 +249,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="match_parent"
                             android:text="ft"
-                            android:textSize="16sp"
+                            android:textSize="14sp"
                             android:gravity="center_vertical"
                             android:paddingStart="4dp"
                             android:paddingEnd="12dp"
@@ -254,7 +271,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="match_parent"
                             android:text="in"
-                            android:textSize="16sp"
+                            android:textSize="14sp"
                             android:gravity="center_vertical"
                             android:paddingStart="4dp"
                             android:paddingEnd="4dp"
@@ -267,10 +284,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Relationship Status"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="16dp"/>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/relationshipInputLayout"

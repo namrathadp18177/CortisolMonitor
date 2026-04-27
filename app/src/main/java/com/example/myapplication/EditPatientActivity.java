@@ -13,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -52,10 +53,25 @@ public class EditPatientActivity extends AppCompatActivity {
         patientEmail = getIntent().getStringExtra("patient_email");
         patientId = getIntent().getStringExtra("patient_id");
 
+        // Set up toolbar with back navigation
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            setSupportActionBar(toolbar);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            }
+        }
+
         initViews();
         setupMedicalConditionsInput();
         loadPatientInfo();
         setupButtons();
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 
     private void initViews() {

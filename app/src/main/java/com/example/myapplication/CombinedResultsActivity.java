@@ -92,9 +92,20 @@ public class CombinedResultsActivity extends AppCompatActivity {
                 return;
             }
 
-            // Get the biomarker values from the intent with default values
-            spiralTwoBiomarker = Math.max(intent.getDoubleExtra("maxstr2", 1.0), 0.001);  // DHEA (spiral 2)
-            spiralThreeBiomarker = Math.max(intent.getDoubleExtra("maxstr3", 1.0), 0.001); // Cortisol (spiral 3)
+            // Get the biomarker values from the intent.
+            // maxstr2 (DHEA) — not yet measured, keep default until DHEA detection is added.
+            // maxstr3 (Cortisol) — fall back to latest value saved by OutputBluetooth
+            //                      if the Intent doesn't carry it directly.
+            spiralTwoBiomarker = Math.max(intent.getDoubleExtra("maxstr2", 1.0), 0.001); // DHEA (future)
+
+            double intentCortisol = intent.getDoubleExtra("maxstr3", -1.0);
+            if (intentCortisol > 0) {
+                spiralThreeBiomarker = Math.max(intentCortisol, 0.001);
+            } else {
+                float saved = getSharedPreferences("BiomarkerResults", MODE_PRIVATE)
+                        .getFloat("latest_cortisol_ng_ml", -1f);
+                spiralThreeBiomarker = Math.max(saved > 0 ? saved : 1.0, 0.001);
+            }
 
             // Log the input values for debugging
             Log.d(TAG, "DHEA Biomarker (from graph): " + spiralTwoBiomarker);

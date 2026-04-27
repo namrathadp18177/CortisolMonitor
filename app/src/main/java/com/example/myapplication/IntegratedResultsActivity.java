@@ -21,6 +21,8 @@ public class IntegratedResultsActivity extends AppCompatActivity {
     private TextView tvIntegratedTitle, tvIntegratedScore, tvIntegratedInterpretation;
     private Button btnHome;
     // Note: Professional layout doesn't include mascot images
+    private TextView tvAssessmentDate;
+    private TextView tvBiomarkerDate;
     private TextView tvPhqScore;
     private TextView tvPhqWeight;
     private TextView tvPhqClassification;
@@ -62,6 +64,13 @@ public class IntegratedResultsActivity extends AppCompatActivity {
     private String stressLevel;
     private String finalResult;
 
+    // Guard: auto-save only once per launch, not on every onResume
+    private boolean autoSaved = false;
+
+    // Data availability flags — set in loadSavedData(), saved with each result
+    private boolean hasBiomarkerData  = false;
+    private boolean hasAssessmentData = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,6 +96,12 @@ public class IntegratedResultsActivity extends AppCompatActivity {
 
             // Display results
             displayResults();
+
+            // Auto-save so Combined Results history is always up to date
+            if (!autoSaved) {
+                saveResults();
+                autoSaved = true;
+            }
 
             // Set button click listeners
             setButtonListeners();
@@ -118,6 +133,10 @@ public class IntegratedResultsActivity extends AppCompatActivity {
         tvDheaWeight = findViewById(R.id.tvDheaWeight);
         tvRatioValue = findViewById(R.id.tvRatioValue);
         tvRatioWeight = findViewById(R.id.tvRatioWeight);
+
+        // Date views
+        tvAssessmentDate = findViewById(R.id.tvAssessmentDate);
+        tvBiomarkerDate  = findViewById(R.id.tvBiomarkerDate);
 
         // Summary views
         tvTotalWeight = findViewById(R.id.tvOverallTotalWeight);
@@ -263,54 +282,56 @@ public class IntegratedResultsActivity extends AppCompatActivity {
 
     private void loadSavedData() {
         SharedPreferences assessmentPrefs = getSharedPreferences("AssessmentResults", MODE_PRIVATE);
-        SharedPreferences biomarkerPrefs = getSharedPreferences("BiomarkerResults", MODE_PRIVATE);
+        SharedPreferences biomarkerPrefs  = getSharedPreferences("BiomarkerResults",  MODE_PRIVATE);
+
+        // ── Assessment availability ────────────────────────────────────────
+        long assessmentTs = assessmentPrefs.getLong("assessment_date_" + username + "_latest", 0);
+        hasAssessmentData = (assessmentTs > 0) || (phqScore > 0) || (resilienceScore > 0);
 
         // Load PHQ data if needed
         if (phqScore <= 0) {
-            phqScore = assessmentPrefs.getInt("phq_" + username + "_latest", 5);
-            phqWeight = assessmentPrefs.getInt("phq_weight_" + username + "_latest", calculatePhqWeight(phqScore));
+            phqScore = assessmentPrefs.getInt("phq_" + username + "_latest", 0);
+            phqWeight = calculatePhqWeight(phqScore);
         }
-
-        // Load Resilience data if needed
         if (resilienceScore <= 0) {
-            resilienceScore = assessmentPrefs.getFloat("resilience_" + username + "_latest", 3.0f);
-            resilienceWeight = assessmentPrefs.getInt("resilience_weight_" + username + "_latest", calculateResilienceWeight(resilienceScore));
+            resilienceScore = assessmentPrefs.getFloat("resilience_" + username + "_latest", 0f);
+            resilienceWeight = calculateResilienceWeight(resilienceScore);
         }
 
-        // Load biomarker data if needed
-        // First, try to get the latest result ID
+        // ── Biomarker availability ─────────────────────────────────────────
+        boolean intentHasBiomarker = getIntent().hasExtra("cortisol_value")
+                || getIntent().hasExtra("cortisol_level");
         String historyList = biomarkerPrefs.getString(username + "_history", "");
-        if (!historyList.isEmpty() && (cortisolValue <= 0 || dheaValue <= 0)) {
+        hasBiomarkerData = intentHasBiomarker || !historyList.isEmpty();
+
+        if (hasBiomarkerData && !historyList.isEmpty() && (cortisolValue <= 0 || dheaValue <= 0)) {
             String[] resultIds = historyList.split(",");
             if (resultIds.length > 0) {
-                // Use the most recent result (last in the list)
                 String latestResultId = resultIds[resultIds.length - 1];
-
                 if (cortisolValue <= 0) {
-                    cortisolValue = biomarkerPrefs.getFloat(latestResultId + "_cortisol", 7.0f);
+                    cortisolValue = biomarkerPrefs.getFloat(latestResultId + "_cortisol", 0f);
                     cortisolWeight = calculateCortisolWeight(cortisolValue);
                 }
-
                 if (dheaValue <= 0) {
-                    dheaValue = biomarkerPrefs.getFloat(latestResultId + "_dhea", 3.0f);
+                    dheaValue = biomarkerPrefs.getFloat(latestResultId + "_dhea", 0f);
                     dheaWeight = calculateDheaWeight(dheaValue);
                 }
-
                 if (cortisolToDheaRatio <= 0) {
-                    cortisolToDheaRatio = biomarkerPrefs.getFloat(latestResultId + "_cortisolDheaRatio", 2.0f);
+                    cortisolToDheaRatio = biomarkerPrefs.getFloat(latestResultId + "_cortisolDheaRatio", 0f);
                     ratioWeight = calculateRatioWeight(cortisolToDheaRatio);
                 }
             }
         }
 
-        // If we still don't have values, use defaults for demo
-        if (cortisolValue <= 0) cortisolValue = 7.0;
-        if (dheaValue <= 0) dheaValue = 3.0;
-        if (cortisolToDheaRatio <= 0) cortisolToDheaRatio = cortisolValue / dheaValue;
+        // Only fill ratio from values if both are present
+        if (cortisolToDheaRatio <= 0 && cortisolValue > 0 && dheaValue > 0) {
+            cortisolToDheaRatio = cortisolValue / dheaValue;
+            ratioWeight = calculateRatioWeight(cortisolToDheaRatio);
+        }
 
-        if (cortisolWeight <= 0) cortisolWeight = calculateCortisolWeight(cortisolValue);
-        if (dheaWeight <= 0) dheaWeight = calculateDheaWeight(dheaValue);
-        if (ratioWeight <= 0) ratioWeight = calculateRatioWeight(cortisolToDheaRatio);
+        if (cortisolWeight <= 0 && cortisolValue > 0) cortisolWeight = calculateCortisolWeight(cortisolValue);
+        if (dheaWeight    <= 0 && dheaValue    > 0) dheaWeight    = calculateDheaWeight(dheaValue);
+        if (ratioWeight   <= 0 && cortisolToDheaRatio > 0) ratioWeight = calculateRatioWeight(cortisolToDheaRatio);
     }
 
     private void calculateIntegratedResults() {
@@ -344,6 +365,38 @@ public class IntegratedResultsActivity extends AppCompatActivity {
 
     private void displayResults() {
         try {
+            java.text.SimpleDateFormat sdf =
+                    new java.text.SimpleDateFormat("MMM dd, yyyy  hh:mm a", java.util.Locale.getDefault());
+
+            // Show assessment date
+            if (tvAssessmentDate != null) {
+                long assessmentTs = getSharedPreferences("AssessmentResults", MODE_PRIVATE)
+                        .getLong("assessment_date_" + username + "_latest", 0);
+                tvAssessmentDate.setText(assessmentTs > 0
+                        ? "Assessed: " + sdf.format(new java.util.Date(assessmentTs))
+                        : "");
+            }
+
+            // Show biomarker date (use saved timestamp if available, else current time if we have values)
+            if (tvBiomarkerDate != null) {
+                String historyList = getSharedPreferences("BiomarkerResults", MODE_PRIVATE)
+                        .getString(username + "_history", "");
+                String biomarkerDateStr = "";
+                if (!historyList.isEmpty()) {
+                    String[] ids = historyList.split(",");
+                    String lastId = ids[ids.length - 1];
+                    // ID format is username_timestamp — extract timestamp
+                    int idx = lastId.lastIndexOf('_');
+                    if (idx >= 0) {
+                        try {
+                            long ts = Long.parseLong(lastId.substring(idx + 1));
+                            biomarkerDateStr = "Measured: " + sdf.format(new java.util.Date(ts));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+                tvBiomarkerDate.setText(biomarkerDateStr);
+            }
+
             // Display Mental Health Assessment data
             if (tvPhqScore != null) {
                 tvPhqScore.setText("Score: " + phqScore);
@@ -551,6 +604,10 @@ public class IntegratedResultsActivity extends AppCompatActivity {
         editor.putFloat(resultId + "_ratio_value", (float)cortisolToDheaRatio);
         editor.putInt(resultId + "_ratio_weight", ratioWeight);
 
+        // Save data availability flags
+        editor.putBoolean(resultId + "_has_biomarker",  hasBiomarkerData);
+        editor.putBoolean(resultId + "_has_assessment", hasAssessmentData);
+
         // Save summary data
         editor.putInt(resultId + "_total_weight", totalWeight);
         editor.putString(resultId + "_stress_level", stressLevel);
@@ -616,7 +673,7 @@ public class IntegratedResultsActivity extends AppCompatActivity {
     }
 
     private void navigateHome() {
-        Intent homeIntent = new Intent(this, DashboardActivity.class);
+        Intent homeIntent = new Intent(this, PatientMainActivity.class);
         homeIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(homeIntent);
         finish();

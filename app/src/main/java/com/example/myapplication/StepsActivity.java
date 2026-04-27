@@ -59,21 +59,8 @@ public class StepsActivity extends AppCompatActivity {
     }
 
     private boolean checkUserAgeData() {
-        String userEmail = DatabaseHelper.getCurrentUserEmail();
-        if (userEmail != null && !userEmail.isEmpty()) {
-            int userAge = dbHelper.getUserAge(userEmail);
-            String userBirthDate = dbHelper.getUserBirthDate(userEmail);
-            
-            if (userAge <= 0 && (userBirthDate == null || userBirthDate.isEmpty())) {
-                Log.d(TAG, "User missing age data, redirecting to UserProfile");
-                // User doesn't have age data - redirect to UserProfile
-                Intent intent = new Intent(StepsActivity.this, UserProfileActivity.class);
-                intent.putExtra("from_login", true);
-                startActivity(intent);
-                finish();
-                return false;
-            }
-        }
+        // UserProfileActivity has been removed. Provider-registered patients are routed
+        // to ActivateAccountActivity before reaching this screen, so no redirect needed.
         return true;
     }
 
@@ -122,7 +109,7 @@ public class StepsActivity extends AppCompatActivity {
             }
             
             // Navigate directly to Dashboard without checking step completion
-            Intent intent = new Intent(StepsActivity.this, DashboardActivity.class);
+            Intent intent = new Intent(StepsActivity.this, PatientMainActivity.class);
             startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             finish();

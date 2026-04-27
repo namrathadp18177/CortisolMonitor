@@ -4,38 +4,39 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="@color/background">
 
     <!-- Toolbar -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="#4CAF50"
-        android:elevation="4dp"
+        android:background="@color/toolbar_background"
+        android:elevation="0dp"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
         <ImageButton
             android:id="@+id/btnBack"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:src="@android:drawable/ic_menu_revert"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back"
-            app:tint="#FFFFFF" />
+            app:tint="@color/text_primary" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Test Results"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:layout_gravity="center" />
     </androidx.appcompat.widget.Toolbar>
 
     <!-- SCROLLVIEW FOR CONTENT -->
     <ScrollView
+        android:overScrollMode="never"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -51,8 +52,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="6dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+        app:strokeColor="@color/border"
+        app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -64,18 +67,18 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Current Reading"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:textColor="#757575" />
+                        android:textColor="@color/text_secondary" />
 
                     <TextView
                         android:id="@+id/tvCortisol"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Cortisol: -- ng/mL"
-                        android:textSize="20sp"
+                        android:textSize="18sp"
                         android:textStyle="bold"
-                        android:textColor="#4CAF50"
+                        android:textColor="@color/primary"
                         android:layout_marginTop="8dp" />
 
                     <TextView
@@ -84,7 +87,7 @@
                         android:layout_height="wrap_content"
                         android:text="Measured on: --"
                         android:textSize="14sp"
-                        android:textColor="#757575"
+                        android:textColor="@color/text_secondary"
                         android:layout_marginTop="4dp" />
 
                     <!-- Stats chips row: Peak + Lowest only -->
@@ -106,7 +109,7 @@
                             android:gravity="center"
                             android:layout_marginEnd="4dp"
                             android:background="#FFF3E0"
-                            android:textColor="#EF6C00" />
+                            android:textColor="@color/stress_moderate" />
 
                         <TextView
                             android:id="@+id/tvMinCortisol"
@@ -118,8 +121,8 @@
                             android:padding="8dp"
                             android:gravity="center"
                             android:layout_marginStart="4dp"
-                            android:background="#E3F2FD"
-                            android:textColor="#1565C0" />
+                            android:background="@color/divider_color"
+                            android:textColor="@color/primary" />
                     </LinearLayout>
 
                 </LinearLayout>
@@ -135,7 +138,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:textColor="#424242" />
+                android:textColor="@color/text_primary" />
 
             <TextView
                 android:id="@+id/tvPreviousResults"
@@ -146,7 +149,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:textColor="#757575"
+                android:textColor="@color/text_secondary"
                 android:visibility="gone" />
 
             <!--  TABLE WITH FIXED HEIGHT - NO NESTED SCROLL -->
@@ -156,7 +159,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:background="#F5F5F5"
+                android:background="@color/background"
                 android:padding="8dp"
                 android:orientation="vertical">
 
@@ -168,7 +171,7 @@
 
                     <!-- Header Row -->
                     <TableRow
-                        android:background="#C8E6C9"
+                        android:background="@color/primary_surface"
                         android:padding="8dp">
 
                         <TextView
@@ -176,7 +179,7 @@
                             android:textStyle="bold"
                             android:padding="8dp"
                             android:textSize="14sp"
-                            android:textColor="#2E7D32" />
+                            android:textColor="@color/primary" />
 
                         <TextView
                             android:text="Cortisol(ng/mL)"
@@ -184,7 +187,7 @@
                             android:padding="8dp"
                             android:gravity="end"
                             android:textSize="14sp"
-                            android:textColor="#2E7D32" />
+                            android:textColor="@color/primary" />
                     </TableRow>
                 </TableLayout>
             </LinearLayout>
@@ -199,7 +202,7 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:textColor="#424242" />
+                android:textColor="@color/text_primary" />
 
             <com.jjoe64.graphview.GraphView
                 android:id="@+id/graphViewResults"
@@ -208,8 +211,8 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
-                android:layout_marginBottom="8dp"
-                android:background="#FAFAFA"
+                android:layout_marginBottom="16dp"
+                android:background="@color/background"
                 android:elevation="2dp" />
 
             <!-- Export buttons -->
@@ -219,45 +222,45 @@
                 android:orientation="vertical"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:layout_marginBottom="8dp">
+                android:layout_marginBottom="16dp">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnExportCsv"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Export All Data to CSV"
-                    android:textColor="#FFFFFF"
-                    android:background="#00796B"
+                    android:textColor="@color/text_primary"
+                    android:background="@color/primary"
                     android:padding="12dp"
-                    android:textSize="15sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:elevation="2dp" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnExportPdf"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Export All Data to PDF"
-                    android:textColor="#FFFFFF"
-                    android:background="#0288D1"
+                    android:textColor="@color/text_primary"
+                    android:background="@color/primary"
                     android:padding="12dp"
-                    android:textSize="15sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:layout_marginTop="8dp"
                     android:elevation="2dp" />
             </LinearLayout>
 
             <!-- Action Button -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnBiomarker"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Go to Dashboard"
-                android:textColor="#FFFFFF"
-                android:background="#4CAF50"
+                android:textColor="@color/text_primary"
+                android:background="@color/toolbar_background"
                 android:layout_margin="16dp"
                 android:padding="16dp"
-                android:textSize="16sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
                 android:elevation="4dp" />
 

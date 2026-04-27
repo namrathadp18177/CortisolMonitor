@@ -14,6 +14,7 @@ public class QuestionnaireResponse {
     private long timestamp;
     private String questionnaireType;
     private String userEmail;
+    private String sessionId;
 
     public QuestionnaireResponse(long id, String section, String questionText, int answer) {
         this.id = id;
@@ -40,4 +41,6 @@ public class QuestionnaireResponse {
     public void setQuestionnaireType(String questionnaireType) { this.questionnaireType = questionnaireType; }
     public String getUserEmail() { return userEmail; }
     public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
-} 
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
+}

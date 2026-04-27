@@ -1,9 +1,10 @@
 package com.example.myapplication;
 
 import android.app.DatePickerDialog;
+import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.content.ContentValues;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -49,6 +50,7 @@ public class CareProviderAccountActivity extends AppCompatActivity {
         etDob = findViewById(R.id.etDateOfBirth);
         etAddress = findViewById(R.id.etAddress);
         Button btnSave = findViewById(R.id.btnSaveCp);
+        Button btnLogout = findViewById(R.id.btnLogoutCp);
 
         tvEmail.setText(email != null ? email : "N/A");
 
@@ -57,6 +59,7 @@ public class CareProviderAccountActivity extends AppCompatActivity {
         loadExistingData();
 
         btnSave.setOnClickListener(v -> saveData());
+        btnLogout.setOnClickListener(v -> logout());
     }
 
     private void setupGenderDropdown() {
@@ -131,6 +134,25 @@ public class CareProviderAccountActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "Could not update account.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void logout() {
+        FirebaseAuthHelper.logout(this);
+
+        getSharedPreferences("session", MODE_PRIVATE).edit().clear().apply();
+        getSharedPreferences("user_prefs", MODE_PRIVATE).edit()
+                .putBoolean("remember_me", false)
+                .remove("saved_email")
+                .remove("saved_password")
+                .apply();
+
+        UserDatabaseHelper.setCurrentUserEmail("");
+        DatabaseHelper.setCurrentUserEmail("");
+
+        Intent intent = new Intent(this, RegisterLoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     @Override

@@ -22,7 +22,7 @@ import com.example.myapplication.data.QuestionnaireResponse;
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "DatabaseHelper";
     private static final String DATABASE_NAME = "AppData.db"; // Renamed to reflect its purpose
-    private static final int DATABASE_VERSION = 5; // Reset as we're removing user table
+    private static final int DATABASE_VERSION = 6; // v6: added session_id to questionnaire_responses
     private final Context context;
 
     // Store current user email (kept for questionnaire and biomarker association)
@@ -126,6 +126,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "timestamp INTEGER," +
                     "questionnaire_type TEXT," +
                     "user_email TEXT," +
+                    "session_id TEXT," +
                     "cloud_id TEXT," +
                     "updated_at TEXT," +
                     "dirty INTEGER DEFAULT 1)");
@@ -156,11 +157,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "phq9_triggered INTEGER DEFAULT 0," +
                     "bdi_triggered INTEGER DEFAULT 0," +
                     "gad7_triggered INTEGER DEFAULT 0," +
-                            "brs_triggered INTEGER DEFAULT 0," +
-                            "cloud_id TEXT," +
-                            "updated_at TEXT," +
-                            "dirty INTEGER DEFAULT 1" +
-                            ")");
+                    "brs_triggered INTEGER DEFAULT 0," +
+                    "cloud_id TEXT," +
+                    "updated_at TEXT," +
+                    "dirty INTEGER DEFAULT 1" +
+                    ")");
 
             Log.d(TAG, "Database tables created successfully");
 
@@ -224,8 +225,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         " ADD COLUMN " + COLUMN_CARTRIDGE_ID + " TEXT");
             } catch (Exception ignored) {}
         }
-
-
+        if (oldVersion < 6) {
+            // Add session_id column for grouping responses by assessment run
+            try {
+                db.execSQL("ALTER TABLE questionnaire_responses ADD COLUMN session_id TEXT");
+            } catch (Exception ignored) {}
+        }
     }
 
 
@@ -323,6 +328,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 }
 
                 values.put("user_email", userEmail);
+                if (response.getSessionId() != null) {
+                    values.put("session_id", response.getSessionId());
+                }
                 values.put("updated_at", getCurrentIsoTime());
                 values.put("dirty", 1);
 
@@ -367,6 +375,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                             userEmail = response.getUserEmail();
                         }
                         values.put("user_email", userEmail);
+                        if (response.getSessionId() != null) {
+                            values.put("session_id", response.getSessionId());
+                        }
                         values.put("updated_at", getCurrentIsoTime());
                         values.put("dirty", 1);
 
@@ -433,6 +444,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         response.setTimestamp(timestamp);
                         response.setQuestionnaireType(questionnaireType);
                         response.setUserEmail(userEmail);
+                        try {
+                            int sidx = cursor.getColumnIndex("session_id");
+                            if (sidx >= 0) response.setSessionId(cursor.getString(sidx));
+                        } catch (Exception ignored) {}
 
                         // Only keep the most recent response for each question
                         if (!latestResponsesByQuestion.containsKey(questionText)) {
@@ -493,6 +508,98 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 return count;
             }
         };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Session-based questionnaire history
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** One assessment run (a unique session_id) with its metadata. */
+    public static class AssessmentSession {
+        public final String sessionId;
+        public final long   timestamp;       // latest timestamp among responses in this session
+        public final String questionnaireTypes; // comma-separated types, e.g. "MENTAL_HEALTH_SCREENER, PHQ"
+
+        public AssessmentSession(String sessionId, long timestamp, String questionnaireTypes) {
+            this.sessionId          = sessionId;
+            this.timestamp          = timestamp;
+            this.questionnaireTypes = questionnaireTypes;
+        }
+    }
+
+    /**
+     * Returns all distinct sessions for the current user, newest first.
+     * Rows with a null or empty session_id are skipped (legacy data).
+     */
+    public List<AssessmentSession> getDistinctSessions() {
+        List<AssessmentSession> sessions = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        String sql = "SELECT session_id, MAX(timestamp) AS session_time, " +
+                "GROUP_CONCAT(DISTINCT questionnaire_type) AS types " +
+                "FROM questionnaire_responses " +
+                "WHERE user_email = ? AND session_id IS NOT NULL AND session_id != '' " +
+                "GROUP BY session_id " +
+                "ORDER BY session_time DESC";
+
+        Cursor cursor = null;
+        try {
+            cursor = db.rawQuery(sql, new String[]{ currentUserEmail });
+            while (cursor.moveToNext()) {
+                String sid   = cursor.getString(0);
+                long   ts    = cursor.getLong(1);
+                String types = cursor.getString(2);
+                sessions.add(new AssessmentSession(sid, ts, types != null ? types : ""));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "getDistinctSessions error: " + e.getMessage(), e);
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return sessions;
+    }
+
+    /**
+     * Returns every response belonging to the given session, ordered by
+     * questionnaire type then by rowid (insertion order).
+     */
+    public List<QuestionnaireResponse> getResponsesForSession(String sessionId) {
+        List<QuestionnaireResponse> list = new ArrayList<>();
+        if (sessionId == null || sessionId.isEmpty()) return list;
+
+        SQLiteDatabase db = getReadableDatabase();
+        String sql = "SELECT id, section, question_text, answer, timestamp, " +
+                "questionnaire_type, user_email, session_id " +
+                "FROM questionnaire_responses " +
+                "WHERE session_id = ? " +
+                "ORDER BY questionnaire_type, id ASC";
+
+        Cursor cursor = null;
+        try {
+            cursor = db.rawQuery(sql, new String[]{ sessionId });
+            while (cursor.moveToNext()) {
+                long   id              = cursor.getLong(0);
+                String section         = cursor.getString(1);
+                String questionText    = cursor.getString(2);
+                int    answer          = cursor.getInt(3);
+                long   timestamp       = cursor.getLong(4);
+                String questionnaireType = cursor.getString(5);
+                String userEmail       = cursor.getString(6);
+                String sid             = cursor.getString(7);
+
+                QuestionnaireResponse r = new QuestionnaireResponse(id, section, questionText, answer);
+                r.setTimestamp(timestamp);
+                r.setQuestionnaireType(questionnaireType != null ? questionnaireType : "");
+                r.setUserEmail(userEmail != null ? userEmail : "");
+                r.setSessionId(sid);
+                list.add(r);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "getResponsesForSession error: " + e.getMessage(), e);
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return list;
     }
 
     // Helper method to extract question number from question text
@@ -1498,5 +1605,56 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         return result.toString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ONE-TIME EMAIL NORMALISATION MIGRATION
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Normalises all user-email columns in AppData.db to lowercase.
+     *
+     * Handles:
+     *  • biomarker_experiments.username       (stores user email)
+     *  • questionnaire_responses.user_email
+     *  • questionnaire_summaries.user_email   (UNIQUE — deduplicates first,
+     *                                          keeping the most recent row)
+     *
+     * Idempotent — safe to call on every app launch.
+     */
+    public void normalizeEmailsToLowercase() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.beginTransaction();
+        try {
+            // ── biomarker_experiments.username ────────────────────────────────
+            db.execSQL("UPDATE " + TABLE_BIOMARKER_EXPERIMENTS
+                    + " SET " + COLUMN_USERNAME + " = LOWER(TRIM(" + COLUMN_USERNAME + "))"
+                    + " WHERE " + COLUMN_USERNAME + " != LOWER(TRIM(" + COLUMN_USERNAME + "))");
+
+            // ── questionnaire_responses.user_email ────────────────────────────
+            db.execSQL("UPDATE questionnaire_responses"
+                    + " SET user_email = LOWER(TRIM(user_email))"
+                    + " WHERE user_email != LOWER(TRIM(user_email))");
+
+            // ── questionnaire_summaries.user_email (UNIQUE) ───────────────────
+            // If two rows share the same lowercase email, keep the newer one
+            // (MAX id) to preserve the most recent questionnaire state.
+            db.execSQL(
+                    "DELETE FROM questionnaire_summaries"
+                            + " WHERE id NOT IN ("
+                            + "   SELECT MAX(id) FROM questionnaire_summaries"
+                            + "   GROUP BY LOWER(TRIM(user_email))"
+                            + ")");
+            db.execSQL("UPDATE questionnaire_summaries"
+                    + " SET user_email = LOWER(TRIM(user_email))"
+                    + " WHERE user_email != LOWER(TRIM(user_email))");
+
+            db.setTransactionSuccessful();
+            Log.d(TAG, "normalizeEmailsToLowercase: AppData.db migration complete");
+        } catch (Exception e) {
+            Log.e(TAG, "normalizeEmailsToLowercase failed: " + e.getMessage(), e);
+        } finally {
+            db.endTransaction();
+        }
     }
 }

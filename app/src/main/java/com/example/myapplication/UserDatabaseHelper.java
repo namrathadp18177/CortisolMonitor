@@ -18,60 +18,54 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String TAG = "UserDatabaseHelper";
 
-    // Database info
     private static final String DATABASE_NAME = "UserProfile.db";
     private static final int DATABASE_VERSION = 4;
 
-    // Patient table
-    private static final String TABLE_USERS = "users";
-    private static final String COLUMN_ID = "id";
-    private static final String COLUMN_EMAIL = "email";
-    private static final String COLUMN_PASSWORD = "password";
-    private static final String COLUMN_ROLE = "role";
-    private static final String COLUMN_AGE = "age";
-    private static final String COLUMN_BIRTH_DATE = "birth_date";
-    private static final String COLUMN_SEX = "sex";
-    private static final String COLUMN_RACE = "race";
+    // ── Users (patients) table ──────────────────────────────────────────────
+    private static final String TABLE_USERS             = "users";
+    private static final String COLUMN_ID               = "id";
+    private static final String COLUMN_EMAIL            = "email";
+    private static final String COLUMN_PASSWORD         = "password";
+    private static final String COLUMN_ROLE             = "role";
+    private static final String COLUMN_AGE              = "age";
+    private static final String COLUMN_BIRTH_DATE       = "birth_date";
+    private static final String COLUMN_SEX              = "sex";
+    private static final String COLUMN_RACE             = "race";
     private static final String COLUMN_RELATIONSHIP_STATUS = "relationship_status";
-    private static final String COLUMN_WEIGHT_KG = "weight_kg";
-    private static final String COLUMN_HEIGHT_M = "height_m";
-    private static final String COLUMN_BMI = "bmi";
+    private static final String COLUMN_WEIGHT_KG        = "weight_kg";
+    private static final String COLUMN_HEIGHT_M         = "height_m";
+    private static final String COLUMN_BMI              = "bmi";
 
-    private static final String COLUMN_CP_ORGANIZATION = "organization";
-    private static final String COLUMN_CP_DESIGNATION = "designation";
-    private static final String COLUMN_CP_DEPARTMENT = "department";
-    private static final String COLUMN_CP_PHONE = "phone";
-    private static final String COLUMN_CP_GENDER = "gender";
-    private static final String COLUMN_CP_DOB = "dob";
-    private static final String COLUMN_CP_ADDRESS = "address";
+    // ── Care-provider extra profile columns ─────────────────────────────────
+    private static final String COLUMN_CP_ORGANIZATION  = "organization";
+    private static final String COLUMN_CP_DESIGNATION   = "designation";
+    private static final String COLUMN_CP_DEPARTMENT    = "department";
+    private static final String COLUMN_CP_PHONE         = "phone";
+    private static final String COLUMN_CP_GENDER        = "gender";
+    private static final String COLUMN_CP_DOB           = "dob";
+    private static final String COLUMN_CP_ADDRESS       = "address";
 
+    // ── Care-providers table ────────────────────────────────────────────────
+    private static final String TABLE_CARE_PROVIDERS    = "care_providers";
+    private static final String COLUMN_CP_ID            = "id";
+    private static final String COLUMN_CP_NAME          = "name";
+    private static final String COLUMN_CP_MEDICAL_ID    = "medical_id";
+    private static final String COLUMN_CP_EMAIL         = "email";
+    private static final String COLUMN_CP_PASSWORD      = "password";
 
-    // Care Provider table
-    private static final String TABLE_CARE_PROVIDERS = "care_providers";
-    private static final String COLUMN_CP_ID = "id";
-    private static final String COLUMN_CP_NAME = "name";
-    private static final String COLUMN_CP_MEDICAL_ID = "medical_id";
-    private static final String COLUMN_CP_EMAIL = "email";
-    private static final String COLUMN_CP_PASSWORD = "password";
+    // ── CP ↔ Patient link table ─────────────────────────────────────────────
+    private static final String TABLE_CP_PATIENT_INFO   = "cp_patient_info";
 
-    // CP patient extra info table
-    private static final String TABLE_CP_PATIENT_INFO = "cp_patient_info";
-
-    // ===== CP Patient Info =====
-
-    public static final String COL_CP_EMAIL = "patient_email";
-    public static final String COL_CP_PROVIDER_MEDICAL_ID = "provider_medical_id";
-    public static final String COL_CP_PATIENT_ID = "patient_id";
-    public static final String COL_CP_NAME = "name";
-    public static final String COL_CP_PHONE = "phone";
-    public static final String COL_CP_RELATIONSHIP = "relationship_status";
+    public static final String COL_CP_EMAIL              = "patient_email";
+    public static final String COL_CP_PROVIDER_MEDICAL_ID= "provider_medical_id";
+    public static final String COL_CP_PATIENT_ID         = "patient_id";
+    public static final String COL_CP_NAME               = "name";
+    public static final String COL_CP_PHONE              = "phone";
+    public static final String COL_CP_RELATIONSHIP       = "relationship_status";
     public static final String COL_CP_MEDICAL_CONDITIONS = "medical_conditions";
 
-
-    // Current user session
+    // ── Session / singleton ─────────────────────────────────────────────────
     private static String currentUserEmail = "";
-
-    // Singleton
     private static UserDatabaseHelper instance;
 
     public static synchronized UserDatabaseHelper getInstance(Context context) {
@@ -83,326 +77,394 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
     private UserDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-        Log.d(TAG, "Database created at: " + context.getDatabasePath(DATABASE_NAME).getAbsolutePath());
+        Log.d(TAG, "Database path: " + context.getDatabasePath(DATABASE_NAME).getAbsolutePath());
     }
 
     public static void setCurrentUserEmail(String email) {
         currentUserEmail = email;
-        Log.d(TAG, "Current user email set to: " + email);
+        Log.d(TAG, "currentUserEmail → " + email);
     }
 
     public static String getCurrentUserEmail() {
         return currentUserEmail;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // SCHEMA
+    // ═══════════════════════════════════════════════════════════════════════
+
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String CREATE_USERS_TABLE = "CREATE TABLE " + TABLE_USERS + " ("
-                + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + COLUMN_EMAIL + " TEXT UNIQUE NOT NULL, "
-                + COLUMN_PASSWORD + " TEXT NOT NULL, "
-                + COLUMN_ROLE + " TEXT NOT NULL DEFAULT 'PATIENT', "
-                + COLUMN_AGE + " INTEGER, "
-                + COLUMN_BIRTH_DATE + " TEXT, "
-                + COLUMN_SEX + " TEXT, "
-                + COLUMN_RACE + " TEXT, "
+
+        db.execSQL("CREATE TABLE " + TABLE_USERS + " ("
+                + COLUMN_ID                + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COLUMN_EMAIL             + " TEXT UNIQUE NOT NULL, "
+                + COLUMN_PASSWORD          + " TEXT NOT NULL, "
+                + COLUMN_ROLE              + " TEXT NOT NULL DEFAULT 'PATIENT', "
+                + COLUMN_AGE               + " INTEGER, "
+                + COLUMN_BIRTH_DATE        + " TEXT, "
+                + COLUMN_SEX               + " TEXT, "
+                + COLUMN_RACE              + " TEXT, "
                 + COLUMN_RELATIONSHIP_STATUS + " TEXT, "
-                + COLUMN_WEIGHT_KG + " REAL, "
-                + COLUMN_HEIGHT_M + " REAL, "
-                + COLUMN_BMI + " REAL, "
-                + "cloud_id TEXT, "
-                + "updated_at TEXT, "
-                + "dirty INTEGER DEFAULT 1"
-                + ")";
-        db.execSQL(CREATE_USERS_TABLE);
+                + COLUMN_WEIGHT_KG         + " REAL, "
+                + COLUMN_HEIGHT_M          + " REAL, "
+                + COLUMN_BMI               + " REAL, "
+                + "cloud_id TEXT, updated_at TEXT, dirty INTEGER DEFAULT 1)");
 
-        String CREATE_CARE_PROVIDERS_TABLE = "CREATE TABLE " + TABLE_CARE_PROVIDERS + " ("
-                + COLUMN_CP_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + COLUMN_CP_NAME + " TEXT NOT NULL, "
-                + COLUMN_CP_MEDICAL_ID + " TEXT UNIQUE NOT NULL, "
-                + COLUMN_CP_EMAIL + " TEXT UNIQUE NOT NULL, "
-                + COLUMN_CP_PASSWORD + " TEXT NOT NULL, "
+        db.execSQL("CREATE TABLE " + TABLE_CARE_PROVIDERS + " ("
+                + COLUMN_CP_ID           + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COLUMN_CP_NAME         + " TEXT NOT NULL, "
+                + COLUMN_CP_MEDICAL_ID   + " TEXT UNIQUE NOT NULL, "
+                + COLUMN_CP_EMAIL        + " TEXT UNIQUE NOT NULL, "
+                + COLUMN_CP_PASSWORD     + " TEXT NOT NULL, "
                 + COLUMN_CP_ORGANIZATION + " TEXT, "
-                + COLUMN_CP_DESIGNATION + " TEXT, "
-                + COLUMN_CP_DEPARTMENT + " TEXT, "
-                + COLUMN_CP_PHONE + " TEXT, "
-                + COLUMN_CP_GENDER + " TEXT, "
-                + COLUMN_CP_DOB + " TEXT, "
-                + COLUMN_CP_ADDRESS + " TEXT, "
-                + "cloud_id TEXT, "
-                + "updated_at TEXT, "
-                + "dirty INTEGER DEFAULT 1"
-                + ")";
+                + COLUMN_CP_DESIGNATION  + " TEXT, "
+                + COLUMN_CP_DEPARTMENT   + " TEXT, "
+                + COLUMN_CP_PHONE        + " TEXT, "
+                + COLUMN_CP_GENDER       + " TEXT, "
+                + COLUMN_CP_DOB          + " TEXT, "
+                + COLUMN_CP_ADDRESS      + " TEXT, "
+                + "cloud_id TEXT, updated_at TEXT, dirty INTEGER DEFAULT 1)");
 
-        db.execSQL(CREATE_CARE_PROVIDERS_TABLE);
+        db.execSQL("CREATE TABLE " + TABLE_CP_PATIENT_INFO + " ("
+                + COL_CP_EMAIL               + " TEXT NOT NULL, "
+                + COL_CP_PROVIDER_MEDICAL_ID + " TEXT NOT NULL, "
+                + COL_CP_PATIENT_ID          + " TEXT NOT NULL, "
+                + COL_CP_NAME                + " TEXT, "
+                + COL_CP_PHONE               + " TEXT, "
+                + COL_CP_RELATIONSHIP        + " TEXT, "
+                + COL_CP_MEDICAL_CONDITIONS  + " TEXT, "
+                + "cloud_id TEXT, updated_at TEXT, dirty INTEGER DEFAULT 1, "
+                + "PRIMARY KEY(" + COL_CP_EMAIL + ", " + COL_CP_PROVIDER_MEDICAL_ID + "))");
 
-        db.execSQL(
-                "CREATE TABLE " + TABLE_CP_PATIENT_INFO + " (" +
-                        COL_CP_EMAIL + " TEXT NOT NULL, " +
-                        COL_CP_PROVIDER_MEDICAL_ID + " TEXT NOT NULL, " +
-                        COL_CP_PATIENT_ID + " TEXT NOT NULL, " +
-                        COL_CP_NAME + " TEXT, " +
-                        COL_CP_PHONE + " TEXT, " +
-                        COL_CP_RELATIONSHIP + " TEXT, " +
-                        COL_CP_MEDICAL_CONDITIONS + " TEXT, " +
-                        "cloud_id TEXT, " +
-                        "updated_at TEXT, " +
-                        "dirty INTEGER DEFAULT 1, " +
-                        "PRIMARY KEY(" + COL_CP_EMAIL + ", " + COL_CP_PROVIDER_MEDICAL_ID + ")" +
-                        ");"
-        );
-
-
-
-
-        Log.d(TAG, "All tables created successfully");
+        Log.d(TAG, "All tables created");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        Log.w(TAG, "Upgrading database from version " + oldVersion + " to " + newVersion);
+        Log.w(TAG, "Upgrading DB " + oldVersion + " → " + newVersion);
 
         if (oldVersion < 4) {
-            // Add sync columns to users table
-            db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN cloud_id TEXT");
-            db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN updated_at TEXT");
-            db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN dirty INTEGER DEFAULT 1");
+            safeAddColumn(db, TABLE_USERS,            "cloud_id",   "TEXT");
+            safeAddColumn(db, TABLE_USERS,            "updated_at", "TEXT");
+            safeAddColumn(db, TABLE_USERS,            "dirty",      "INTEGER DEFAULT 1");
+            safeAddColumn(db, TABLE_CARE_PROVIDERS,   "cloud_id",   "TEXT");
+            safeAddColumn(db, TABLE_CARE_PROVIDERS,   "updated_at", "TEXT");
+            safeAddColumn(db, TABLE_CARE_PROVIDERS,   "dirty",      "INTEGER DEFAULT 1");
+            safeAddColumn(db, TABLE_CP_PATIENT_INFO,  "cloud_id",   "TEXT");
+            safeAddColumn(db, TABLE_CP_PATIENT_INFO,  "updated_at", "TEXT");
+            safeAddColumn(db, TABLE_CP_PATIENT_INFO,  "dirty",      "INTEGER DEFAULT 1");
 
-            // Add sync columns to care_providers table
-            db.execSQL("ALTER TABLE " + TABLE_CARE_PROVIDERS + " ADD COLUMN cloud_id TEXT");
-            db.execSQL("ALTER TABLE " + TABLE_CARE_PROVIDERS + " ADD COLUMN updated_at TEXT");
-            db.execSQL("ALTER TABLE " + TABLE_CARE_PROVIDERS + " ADD COLUMN dirty INTEGER DEFAULT 1");
-
-            // Add sync columns to cp_patient_info table
-            db.execSQL("ALTER TABLE " + TABLE_CP_PATIENT_INFO + " ADD COLUMN cloud_id TEXT");
-            db.execSQL("ALTER TABLE " + TABLE_CP_PATIENT_INFO + " ADD COLUMN updated_at TEXT");
-            db.execSQL("ALTER TABLE " + TABLE_CP_PATIENT_INFO + " ADD COLUMN dirty INTEGER DEFAULT 1");
-
-            // Mark all existing rows as dirty with current timestamp
-            String now = new java.text.SimpleDateFormat(
-                    "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
-                    .format(new java.util.Date());
-
-            db.execSQL("UPDATE " + TABLE_USERS + " SET updated_at = '" + now + "', dirty = 1");
-            db.execSQL("UPDATE " + TABLE_CARE_PROVIDERS + " SET updated_at = '" + now + "', dirty = 1");
-            db.execSQL("UPDATE " + TABLE_CP_PATIENT_INFO + " SET updated_at = '" + now + "', dirty = 1");
+            String now = getCurrentIsoTimeStatic();
+            db.execSQL("UPDATE " + TABLE_USERS           + " SET updated_at='" + now + "', dirty=1");
+            db.execSQL("UPDATE " + TABLE_CARE_PROVIDERS  + " SET updated_at='" + now + "', dirty=1");
+            db.execSQL("UPDATE " + TABLE_CP_PATIENT_INFO + " SET updated_at='" + now + "', dirty=1");
         }
     }
 
+    /** ALTER TABLE only if the column does not already exist (safe for repeated upgrades). */
+    private void safeAddColumn(SQLiteDatabase db, String table, String column, String type) {
+        try {
+            db.execSQL("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+        } catch (Exception e) {
+            Log.w(TAG, "safeAddColumn: " + column + " already exists in " + table + " (skipped)");
+        }
+    }
 
-    // ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+    // ROLE DETECTION  ← FIX 3: never default to PATIENT on null
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Returns "CARE_PROVIDER", "PATIENT", or null if credentials don't match either table.
+     *
+     * IMPORTANT: callers must treat null as "wrong credentials" — never fall
+     * through to a PATIENT flow when null is returned.
+     */
+    public String getUserRole(String email, String password) {
+        // Check care_providers first — a CP email must NEVER reach the users table check.
+        if (isCareProviderRegistered(email)) {
+            if (loginCareProvider(email, password)) {
+                Log.d(TAG, "getUserRole → CARE_PROVIDER for " + email);
+                return "CARE_PROVIDER";
+            } else {
+                // Email exists as CP but password is wrong — return null, not PATIENT.
+                Log.w(TAG, "getUserRole → CP email matched but wrong password for " + email);
+                return null;
+            }
+        }
+        if (loginUser(email, password)) {
+            Log.d(TAG, "getUserRole → PATIENT for " + email);
+            return "PATIENT";
+        }
+        Log.d(TAG, "getUserRole → no match for " + email);
+        return null;
+    }
+
+    /**
+     * Convenience: given just an email (no password), return the account type.
+     * Useful for showing the correct login error message.
+     * Returns "CARE_PROVIDER", "PATIENT", or null if unknown.
+     */
+    public String getAccountTypeByEmail(String email) {
+        if (email != null) email = email.trim().toLowerCase();
+        if (isCareProviderRegistered(email)) return "CARE_PROVIDER";
+        if (isUserRegistered(email))         return "PATIENT";
+        return null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // CARE PROVIDER METHODS
-    // ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
 
     public long registerCareProvider(String name, String medicalId, String email, String password) {
+        if (email != null) email = email.trim().toLowerCase();
         if (isCareProviderRegistered(email)) {
-            Log.w(TAG, "Care provider with email " + email + " already exists");
+            Log.w(TAG, "CP already exists: " + email);
             return -1;
         }
         if (isMedicalIdTaken(medicalId)) {
-            Log.w(TAG, "Medical ID " + medicalId + " already in use");
+            Log.w(TAG, "Medical ID taken: " + medicalId);
             return -2;
         }
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_CP_NAME, name);
-        values.put(COLUMN_CP_MEDICAL_ID, medicalId);
-        values.put(COLUMN_CP_EMAIL, email);
-        values.put(COLUMN_CP_PASSWORD, password);
-        values.put("updated_at", getCurrentIsoTime());
-        values.put("dirty", 1);
-        long id = db.insert(TABLE_CARE_PROVIDERS, null, values);
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_CP_NAME,       name);
+        v.put(COLUMN_CP_MEDICAL_ID, medicalId);
+        v.put(COLUMN_CP_EMAIL,      email);
+        v.put(COLUMN_CP_PASSWORD,   password);
+        v.put("updated_at", getCurrentIsoTime());
+        v.put("dirty", 1);
+        long id = db.insert(TABLE_CARE_PROVIDERS, null, v);
         if (id > 0) {
             setCurrentUserEmail(email);
-            Log.d(TAG, "Care provider registered successfully with ID: " + id);
+            Log.d(TAG, "CP registered id=" + id);
         } else {
-            Log.e(TAG, "Failed to register care provider");
+            Log.e(TAG, "CP registration failed");
         }
         return id;
     }
 
     public boolean loginCareProvider(String email, String password) {
+        if (email != null) email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getReadableDatabase();
-        String selection = COLUMN_CP_EMAIL + " = ? AND " + COLUMN_CP_PASSWORD + " = ?";
-        Cursor cursor = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
-                selection, new String[]{email, password}, null, null, null);
-        boolean success = cursor.getCount() > 0;
-        cursor.close();
-        if (success) {
-            setCurrentUserEmail(email);
-            Log.d(TAG, "Care provider logged in: " + email);
-        }
-        return success;
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
+                COLUMN_CP_EMAIL + "=? AND " + COLUMN_CP_PASSWORD + "=?",
+                new String[]{email, password}, null, null, null);
+        boolean ok = c.getCount() > 0;
+        c.close();
+        if (ok) setCurrentUserEmail(email);
+        return ok;
     }
 
     public boolean isCareProviderRegistered(String email) {
+        if (email != null) email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
-                COLUMN_CP_EMAIL + " = ?", new String[]{email}, null, null, null);
-        boolean exists = cursor.getCount() > 0;
-        cursor.close();
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
+                COLUMN_CP_EMAIL + "=?", new String[]{email}, null, null, null);
+        boolean exists = c.getCount() > 0;
+        c.close();
+        return exists;
+    }
+
+    public boolean isMedicalIdTaken(String medicalId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
+                COLUMN_CP_MEDICAL_ID + "=?", new String[]{medicalId}, null, null, null);
+        boolean exists = c.getCount() > 0;
+        c.close();
         return exists;
     }
 
     public String getCareProviderName(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_NAME},
-                COLUMN_CP_EMAIL + " = ?", new String[]{email}, null, null, null);
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_NAME},
+                COLUMN_CP_EMAIL + "=?", new String[]{email}, null, null, null);
         String name = "";
-        if (cursor.moveToFirst()) {
-            name = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CP_NAME));
-        }
-        cursor.close();
+        if (c.moveToFirst()) name = c.getString(c.getColumnIndexOrThrow(COLUMN_CP_NAME));
+        c.close();
         return name;
     }
 
     public String getCareProviderMedicalId(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_MEDICAL_ID},
-                COLUMN_CP_EMAIL + " = ?", new String[]{email}, null, null, null);
-        String medicalId = "";
-        if (cursor.moveToFirst()) {
-            medicalId = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CP_MEDICAL_ID));
-        }
-        cursor.close();
-        return medicalId;
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_MEDICAL_ID},
+                COLUMN_CP_EMAIL + "=?", new String[]{email}, null, null, null);
+        String id = "";
+        if (c.moveToFirst()) id = c.getString(c.getColumnIndexOrThrow(COLUMN_CP_MEDICAL_ID));
+        c.close();
+        return id;
     }
 
-    /**
-     * Returns "PATIENT", "CARE_PROVIDER", or null if credentials don't match anything
-     */
-    public String getUserRole(String email, String password) {
-        if (loginUser(email, password)) return "PATIENT";
-        if (loginCareProvider(email, password)) return "CARE_PROVIDER";
-        return null;
-    }
-
-    /**
-     * Returns all patient emails in the system (for Care Provider dashboard)
-     */
-    public List<String> getAllPatientEmails() {
-        List<String> emails = new ArrayList<>();
+    public String getCareProviderNameByMedicalId(String medicalId) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_USERS, new String[]{COLUMN_EMAIL},
-                null, null, null, null, null);
-        if (cursor.moveToFirst()) {
-            do {
-                emails.add(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL)));
-            } while (cursor.moveToNext());
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_NAME},
+                COLUMN_CP_MEDICAL_ID + "=?", new String[]{medicalId}, null, null, null);
+        String name = null;
+        if (c != null && c.moveToFirst()) {
+            name = c.getString(c.getColumnIndexOrThrow(COLUMN_CP_NAME));
+            c.close();
         }
-        cursor.close();
-        return emails;
+        return name;
     }
 
-    // ─────────────────────────────────────────────
-    // EXISTING PATIENT METHODS (unchanged)
-    // ─────────────────────────────────────────────
+    public String getCareProviderOrganizationByMedicalId(String medicalId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ORGANIZATION},
+                COLUMN_CP_MEDICAL_ID + "=?", new String[]{medicalId}, null, null, null);
+        String org = null;
+        if (c != null && c.moveToFirst()) {
+            org = c.getString(c.getColumnIndexOrThrow(COLUMN_CP_ORGANIZATION));
+            c.close();
+        }
+        return org;
+    }
+
+    public String getCareProviderDesignationByMedicalId(String medicalId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_DESIGNATION},
+                COLUMN_CP_MEDICAL_ID + "=?", new String[]{medicalId}, null, null, null);
+        String desig = null;
+        if (c != null && c.moveToFirst()) {
+            desig = c.getString(c.getColumnIndexOrThrow(COLUMN_CP_DESIGNATION));
+            c.close();
+        }
+        return desig;
+    }
+
+    public String getCareProviderMedicalIdForPatient(String patientEmail) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_CP_PATIENT_INFO, new String[]{COL_CP_PROVIDER_MEDICAL_ID},
+                COL_CP_EMAIL + "=?", new String[]{patientEmail}, null, null, null);
+        String medId = null;
+        if (c != null && c.moveToFirst()) {
+            medId = c.getString(c.getColumnIndexOrThrow(COL_CP_PROVIDER_MEDICAL_ID));
+            c.close();
+        }
+        return medId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PATIENT METHODS
+    // ═══════════════════════════════════════════════════════════════════════
 
     public long registerUser(String email, String password, String birthDate,
                              String sex, String race, String relationshipStatus,
                              float weightKg, float heightM, float bmi) {
+        if (email != null) email = email.trim().toLowerCase();
         if (isUserRegistered(email)) {
-            Log.w(TAG, "User with email " + email + " already exists");
+            Log.w(TAG, "Patient already exists: " + email);
             return -1;
         }
         int age = calculateAgeFromBirthDate(birthDate);
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_EMAIL, email);
-        values.put(COLUMN_PASSWORD, password);
-        values.put(COLUMN_AGE, age);
-        values.put(COLUMN_BIRTH_DATE, birthDate);
-        values.put(COLUMN_SEX, sex);
-        values.put(COLUMN_RACE, race);
-        values.put(COLUMN_RELATIONSHIP_STATUS, relationshipStatus);
-        values.put(COLUMN_WEIGHT_KG, weightKg);
-        values.put(COLUMN_HEIGHT_M, heightM);
-        values.put(COLUMN_BMI, bmi);
-        values.put("updated_at", getCurrentIsoTime());
-        values.put("dirty", 1);
-        long id = db.insert(TABLE_USERS, null, values);
-        if (id > 0) {
-            Log.d(TAG, "User registered successfully with ID: " + id);
-        }
-        else {
-            Log.e(TAG, "Failed to register user");
-        }
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_EMAIL,               email);
+        v.put(COLUMN_PASSWORD,            password);
+        v.put(COLUMN_AGE,                 age);
+        v.put(COLUMN_BIRTH_DATE,          birthDate);
+        v.put(COLUMN_SEX,                 sex);
+        v.put(COLUMN_RACE,                race);
+        v.put(COLUMN_RELATIONSHIP_STATUS, relationshipStatus);
+        v.put(COLUMN_WEIGHT_KG,           weightKg);
+        v.put(COLUMN_HEIGHT_M,            heightM);
+        v.put(COLUMN_BMI,                 bmi);
+        v.put("updated_at", getCurrentIsoTime());
+        v.put("dirty", 1);
+        long id = db.insert(TABLE_USERS, null, v);
+        if (id > 0) Log.d(TAG, "Patient registered id=" + id);
+        else        Log.e(TAG, "Patient registration failed");
         return id;
     }
 
     public boolean loginUser(String email, String password) {
+        if (email != null) email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getReadableDatabase();
-        String selection = COLUMN_EMAIL + " = ? AND " + COLUMN_PASSWORD + " = ?";
-        Cursor cursor = db.query(TABLE_USERS, new String[]{COLUMN_ID},
-                selection, new String[]{email, password}, null, null, null);
-        int count = cursor.getCount();
-        cursor.close();
+        Cursor c = db.query(TABLE_USERS, new String[]{COLUMN_ID},
+                COLUMN_EMAIL + "=? AND " + COLUMN_PASSWORD + "=?",
+                new String[]{email, password}, null, null, null);
+        int count = c.getCount();
+        c.close();
         if (count > 0) {
             setCurrentUserEmail(email);
-            Log.d(TAG, "User logged in: " + email);
+            Log.d(TAG, "Patient logged in: " + email);
             return true;
         }
         return false;
     }
 
     public boolean isUserRegistered(String email) {
+        if (email != null) email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_USERS, new String[]{COLUMN_ID},
-                COLUMN_EMAIL + " = ?", new String[]{email}, null, null, null);
-        int count = cursor.getCount();
-        cursor.close();
+        Cursor c = db.query(TABLE_USERS, new String[]{COLUMN_ID},
+                COLUMN_EMAIL + "=?", new String[]{email}, null, null, null);
+        int count = c.getCount();
+        c.close();
         return count > 0;
     }
 
+    public boolean checkUserExists(String email) {
+        return isUserRegistered(email);
+    }
+
     public UserData getUserData(String email) {
-        if (email == null || email.isEmpty()) {
-            email = currentUserEmail;
-        }
+        if (email == null || email.isEmpty()) email = currentUserEmail;
         SQLiteDatabase db = this.getReadableDatabase();
         UserData userData = null;
-        String[] columns = {
-                COLUMN_ID, COLUMN_EMAIL, COLUMN_AGE, COLUMN_BIRTH_DATE,
+        String[] cols = {COLUMN_ID, COLUMN_EMAIL, COLUMN_AGE, COLUMN_BIRTH_DATE,
                 COLUMN_SEX, COLUMN_RACE, COLUMN_RELATIONSHIP_STATUS,
-                COLUMN_WEIGHT_KG, COLUMN_HEIGHT_M, COLUMN_BMI
-        };
-        Cursor cursor = null;
+                COLUMN_WEIGHT_KG, COLUMN_HEIGHT_M, COLUMN_BMI};
+        Cursor c = null;
         try {
-            cursor = db.query(TABLE_USERS, columns,
-                    COLUMN_EMAIL + " = ?", new String[]{email}, null, null, null);
-            if (cursor != null && cursor.moveToFirst()) {
+            c = db.query(TABLE_USERS, cols, COLUMN_EMAIL + "=?", new String[]{email},
+                    null, null, null);
+            if (c != null && c.moveToFirst()) {
                 userData = new UserData();
-                userData.setId(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)));
-                userData.setEmail(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL)));
-                userData.setAge(cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_AGE)));
-                userData.setBirthDate(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_BIRTH_DATE)));
-                userData.setSex(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SEX)));
-                userData.setRace(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_RACE)));
-                userData.setRelationshipStatus(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_RELATIONSHIP_STATUS)));
-                userData.setWeightKg(cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_WEIGHT_KG)));
-                userData.setHeightM(cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_HEIGHT_M)));
-                userData.setBmi(cursor.getFloat(cursor.getColumnIndexOrThrow(COLUMN_BMI)));
-                Log.d(TAG, "User data retrieved for: " + email);
+                userData.setId(c.getInt(c.getColumnIndexOrThrow(COLUMN_ID)));
+                userData.setEmail(c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL)));
+                userData.setAge(c.getInt(c.getColumnIndexOrThrow(COLUMN_AGE)));
+                userData.setBirthDate(c.getString(c.getColumnIndexOrThrow(COLUMN_BIRTH_DATE)));
+                userData.setSex(c.getString(c.getColumnIndexOrThrow(COLUMN_SEX)));
+                userData.setRace(c.getString(c.getColumnIndexOrThrow(COLUMN_RACE)));
+                userData.setRelationshipStatus(c.getString(c.getColumnIndexOrThrow(COLUMN_RELATIONSHIP_STATUS)));
+                userData.setWeightKg(c.getFloat(c.getColumnIndexOrThrow(COLUMN_WEIGHT_KG)));
+                userData.setHeightM(c.getFloat(c.getColumnIndexOrThrow(COLUMN_HEIGHT_M)));
+                userData.setBmi(c.getFloat(c.getColumnIndexOrThrow(COLUMN_BMI)));
+                Log.d(TAG, "getUserData ok: " + email);
             } else {
-                Log.w(TAG, "No user data found for: " + email);
+                Log.w(TAG, "getUserData: no row for " + email);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting user data: " + e.getMessage());
+            Log.e(TAG, "getUserData error: " + e.getMessage());
         } finally {
-            if (cursor != null) cursor.close();
+            if (c != null) c.close();
         }
         return userData;
     }
 
     public int getUserAge(String email) {
         if (email == null || email.isEmpty()) email = currentUserEmail;
-        UserData userData = getUserData(email);
-        return userData != null ? userData.getAge() : -1;
+        UserData d = getUserData(email);
+        return d != null ? d.getAge() : -1;
     }
 
     public String getUserBirthDate(String email) {
         if (email == null || email.isEmpty()) email = currentUserEmail;
-        UserData userData = getUserData(email);
-        return userData != null ? userData.getBirthDate() : null;
+        UserData d = getUserData(email);
+        return d != null ? d.getBirthDate() : null;
+    }
+
+    public List<String> getAllPatientEmails() {
+        List<String> emails = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_USERS, new String[]{COLUMN_EMAIL},
+                null, null, null, null, null);
+        if (c.moveToFirst()) {
+            do { emails.add(c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL))); }
+            while (c.moveToNext());
+        }
+        c.close();
+        return emails;
     }
 
     public boolean updateUserDemographics(String email, String sex, String race,
@@ -410,188 +472,311 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                                           float heightM, float bmi) {
         if (email == null || email.isEmpty()) email = currentUserEmail;
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_SEX, sex);
-        values.put(COLUMN_RACE, race);
-        values.put(COLUMN_RELATIONSHIP_STATUS, relationshipStatus);
-        values.put(COLUMN_WEIGHT_KG, weightKg);
-        values.put(COLUMN_HEIGHT_M, heightM);
-        values.put(COLUMN_BMI, bmi);
-        values.put("updated_at", getCurrentIsoTime());
-        values.put("dirty", 1);
-        int rowsAffected = db.update(TABLE_USERS, values, COLUMN_EMAIL + " = ?", new String[]{email});
-        if (rowsAffected > 0) {
-            Log.d(TAG, "User demographics updated for: " + email);
-            return true;
-        }
-        Log.e(TAG, "Failed to update demographics for: " + email);
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_SEX,                 sex);
+        v.put(COLUMN_RACE,                race);
+        v.put(COLUMN_RELATIONSHIP_STATUS, relationshipStatus);
+        v.put(COLUMN_WEIGHT_KG,           weightKg);
+        v.put(COLUMN_HEIGHT_M,            heightM);
+        v.put(COLUMN_BMI,                 bmi);
+        v.put("updated_at", getCurrentIsoTime());
+        v.put("dirty", 1);
+        int rows = db.update(TABLE_USERS, v, COLUMN_EMAIL + "=?", new String[]{email});
+        if (rows > 0) { Log.d(TAG, "Demographics updated: " + email); return true; }
+        Log.e(TAG, "Demographics update failed: " + email);
         return false;
     }
 
     public boolean updateUserAge(String email, int age, String birthDate) {
         if (email == null || email.isEmpty()) email = currentUserEmail;
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_AGE, age);
-        values.put(COLUMN_BIRTH_DATE, birthDate);
-        values.put("updated_at", getCurrentIsoTime());
-        values.put("dirty", 1);
-        int rowsAffected = db.update(TABLE_USERS, values, COLUMN_EMAIL + " = ?", new String[]{email});
-        return rowsAffected > 0;
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_AGE,        age);
+        v.put(COLUMN_BIRTH_DATE, birthDate);
+        v.put("updated_at", getCurrentIsoTime());
+        v.put("dirty", 1);
+        return db.update(TABLE_USERS, v, COLUMN_EMAIL + "=?", new String[]{email}) > 0;
     }
 
-    public boolean hasCompleteDemographicData(String email) {
-        if (email == null || email.isEmpty()) email = currentUserEmail;
-        UserData userData = getUserData(email);
-        if (userData == null) return false;
-        boolean hasComplete = userData.getSex() != null && !userData.getSex().isEmpty()
-                && userData.getRace() != null && !userData.getRace().isEmpty()
-                && userData.getRelationshipStatus() != null && !userData.getRelationshipStatus().isEmpty()
-                && userData.getWeightKg() > 0
-                && userData.getHeightM() > 0;
-        Log.d(TAG, "User " + email + " has complete demographic data: " + hasComplete);
-        return hasComplete;
+    public boolean updateUserPassword(String email, String newPassword) {
+        if (email == null || email.isEmpty()) return false;
+        email = email.trim().toLowerCase();
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_PASSWORD, newPassword);
+        return db.update(TABLE_USERS, v, COLUMN_EMAIL + "=?", new String[]{email}) > 0;
     }
 
+    public boolean hasPasswordSet(String email) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_USERS, new String[]{COLUMN_PASSWORD},
+                COLUMN_EMAIL + "=?", new String[]{email}, null, null, null);
+        boolean has = false;
+        if (c != null && c.moveToFirst()) {
+            String pwd = c.getString(c.getColumnIndexOrThrow(COLUMN_PASSWORD));
+            has = pwd != null && !pwd.isEmpty();
+            c.close();
+        }
+        return has;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // calculateAgeFromBirthDate
+    //
+    // OLD: only parsed "MM/dd/yyyy" → legacy "yyyy-MM-dd" rows returned -1
+    //      → hasCompleteDemographicData returned false every login.
+    //
+    // NEW: tries "MM/dd/yyyy" then "yyyy-MM-dd" fallback.
+    //      Month/day comparison replaces the broken DAY_OF_YEAR check that
+    //      mis-calculated ages across leap-year boundaries.
+    // ═══════════════════════════════════════════════════════════════════════
     public int calculateAgeFromBirthDate(String birthDate) {
         if (birthDate == null || birthDate.isEmpty()) return -1;
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
-            Date birth = sdf.parse(birthDate);
-            Calendar birthCal = Calendar.getInstance();
-            birthCal.setTime(birth);
-            Calendar today = Calendar.getInstance();
-            int age = today.get(Calendar.YEAR) - birthCal.get(Calendar.YEAR);
-            if (today.get(Calendar.DAY_OF_YEAR) < birthCal.get(Calendar.DAY_OF_YEAR)) age--;
-            return age;
-        } catch (Exception e) {
-            Log.e(TAG, "Error calculating age: " + e.getMessage());
+
+        Date birth = tryParse(birthDate, "MM/dd/yyyy");
+        if (birth == null) birth = tryParse(birthDate, "yyyy-MM-dd");
+        if (birth == null) {
+            Log.e(TAG, "calculateAgeFromBirthDate: cannot parse '" + birthDate + "'");
             return -1;
+        }
+
+        Calendar bCal  = Calendar.getInstance();
+        bCal.setTime(birth);
+        Calendar today = Calendar.getInstance();
+
+        int age = today.get(Calendar.YEAR) - bCal.get(Calendar.YEAR);
+        // Subtract 1 if birthday hasn't occurred yet this calendar year
+        if (today.get(Calendar.MONTH) < bCal.get(Calendar.MONTH) ||
+                (today.get(Calendar.MONTH) == bCal.get(Calendar.MONTH) &&
+                        today.get(Calendar.DAY_OF_MONTH) < bCal.get(Calendar.DAY_OF_MONTH))) {
+            age--;
+        }
+        Log.d(TAG, "calculateAgeFromBirthDate('" + birthDate + "') = " + age);
+        return age;
+    }
+
+    /** Null-safe date parser; returns null on any failure. */
+    private Date tryParse(String date, String pattern) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.US);
+            sdf.setLenient(false);
+            return sdf.parse(date);
+        } catch (Exception e) {
+            return null;
         }
     }
 
-    public float poundsToKg(float pounds) {
-        return pounds * 0.45359237f;
+    // ═══════════════════════════════════════════════════════════════════════
+    // FIX 3 — isPatientPreRegisteredByProvider
+    //
+    // NEW helper: returns true when a CP has added this email to
+    // cp_patient_info but the patient has NOT yet self-registered in users.
+    // Use this in LoginActivity / RegisterActivity to route them to
+    // UserProfileActivity with activation_mode=true instead of letting them
+    // create a duplicate account.
+    // ═══════════════════════════════════════════════════════════════════════
+    public boolean isPatientPreRegisteredByProvider(String email) {
+        if (email == null || email.isEmpty()) return false;
+        return isPatientLinkedToAnyProvider(email) && !isUserRegistered(email);
     }
 
-    public float feetInchesToMeters(int feet, int inches) {
-        float totalInches = (feet * 12) + inches;
-        return totalInches * 0.0254f;
+    public boolean isPatientLinkedToAnyProvider(String email) {
+        if (email == null || email.isEmpty()) return false;
+        email = email.trim().toLowerCase();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_CP_PATIENT_INFO, new String[]{COL_CP_EMAIL},
+                COL_CP_EMAIL + "=?", new String[]{email}, null, null, null);
+        boolean linked = c != null && c.moveToFirst();
+        if (c != null) c.close();
+        Log.d(TAG, "isPatientLinkedToAnyProvider(" + email + ")=" + linked);
+        return linked;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // ONE-TIME EMAIL NORMALISATION + DEDUPLICATION MIGRATION
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Cleans up the UserProfile.db to remove duplicate rows that were created
+     * because the same email was stored in different cases (e.g. "John@gmail.com"
+     * and "john@gmail.com" became two separate rows).
+     *
+     * Rules for picking the survivor when duplicates exist:
+     *   1. Prefer the row whose password is NOT the auto-assigned "Temp123!"
+     *      (i.e. the patient already self-registered or set their own password).
+     *   2. Among equals, prefer the row with a higher age value (more complete).
+     *   3. Final tie-break: keep the row with the lower id (earliest registration).
+     *
+     * After deduplication, ALL email columns across every table are normalised
+     * to lowercase so future comparisons are always case-insensitive.
+     *
+     * This method is idempotent — safe to call on every app launch.
+     */
+    public void normalizeAndDeduplicateEmails() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.beginTransaction();
+        try {
+
+            // ── STEP 1: Merge duplicate rows in the users table ───────────────
+            // Find every lowercase-email that appears more than once.
+            Cursor dupCursor = db.rawQuery(
+                    "SELECT LOWER(TRIM(email)) AS le "
+                    + "FROM " + TABLE_USERS
+                    + " GROUP BY LOWER(TRIM(email)) HAVING COUNT(*) > 1",
+                    null);
+
+            while (dupCursor.moveToNext()) {
+                String lowerEmail = dupCursor.getString(0);
+
+                // Rank all rows for this email: best survivor comes first.
+                Cursor rows = db.rawQuery(
+                        "SELECT id FROM " + TABLE_USERS
+                        + " WHERE LOWER(TRIM(email)) = ?"
+                        + " ORDER BY"
+                        + "   CASE WHEN " + COLUMN_PASSWORD + " != 'Temp123!' THEN 0 ELSE 1 END ASC,"
+                        + "   " + COLUMN_AGE + " DESC,"
+                        + "   id ASC",
+                        new String[]{lowerEmail});
+
+                if (rows.moveToFirst()) {
+                    long keepId = rows.getLong(0); // first row = winner
+                    while (rows.moveToNext()) {
+                        long losingId = rows.getLong(0);
+                        db.execSQL("DELETE FROM " + TABLE_USERS + " WHERE id = ?",
+                                new Object[]{losingId});
+                        Log.i(TAG, "Email dedup: deleted duplicate user row id=" + losingId
+                                + " (kept id=" + keepId + " for " + lowerEmail + ")");
+                    }
+                }
+                rows.close();
+            }
+            dupCursor.close();
+
+            // ── STEP 2: Normalise users.email to lowercase ────────────────────
+            db.execSQL("UPDATE " + TABLE_USERS
+                    + " SET email = LOWER(TRIM(email)), dirty = 1"
+                    + " WHERE email != LOWER(TRIM(email))");
+
+            // ── STEP 3: Normalise care_providers.email to lowercase ───────────
+            db.execSQL("UPDATE " + TABLE_CARE_PROVIDERS
+                    + " SET email = LOWER(TRIM(email)), dirty = 1"
+                    + " WHERE email != LOWER(TRIM(email))");
+
+            // ── STEP 4: Remove duplicate cp_patient_info rows ─────────────────
+            // The PRIMARY KEY is (patient_email, provider_medical_id).  After
+            // lowercasing, two rows with different-case emails for the same
+            // provider would collide.  Keep the oldest (MIN rowid) for each combo.
+            db.execSQL(
+                    "DELETE FROM " + TABLE_CP_PATIENT_INFO
+                    + " WHERE rowid NOT IN ("
+                    + "   SELECT MIN(rowid) FROM " + TABLE_CP_PATIENT_INFO
+                    + "   GROUP BY LOWER(TRIM(" + COL_CP_EMAIL + ")), "
+                    +                    COL_CP_PROVIDER_MEDICAL_ID
+                    + ")");
+
+            // ── STEP 5: Normalise cp_patient_info.patient_email to lowercase ───
+            db.execSQL("UPDATE " + TABLE_CP_PATIENT_INFO
+                    + " SET " + COL_CP_EMAIL + " = LOWER(TRIM(" + COL_CP_EMAIL + ")), dirty = 1"
+                    + " WHERE " + COL_CP_EMAIL + " != LOWER(TRIM(" + COL_CP_EMAIL + "))");
+
+            db.setTransactionSuccessful();
+            Log.i(TAG, "normalizeAndDeduplicateEmails: migration complete");
+        } catch (Exception e) {
+            Log.e(TAG, "normalizeAndDeduplicateEmails failed: " + e.getMessage(), e);
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // UNIT HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public float poundsToKg(float pounds)                { return pounds * 0.45359237f; }
+    public float feetInchesToMeters(int feet, int inches){ return ((feet * 12) + inches) * 0.0254f; }
     public float calculateBMI(float weightKg, float heightM) {
-        if (heightM <= 0) return 0;
-        return weightKg / (heightM * heightM);
+        return heightM <= 0 ? 0 : weightKg / (heightM * heightM);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DELETE / CLEAR
+    // ═══════════════════════════════════════════════════════════════════════
 
     public boolean deleteUser(String email) {
         SQLiteDatabase db = this.getWritableDatabase();
-        int rowsDeleted = db.delete(TABLE_USERS, COLUMN_EMAIL + " = ?", new String[]{email});
-        if (rowsDeleted > 0) {
-            Log.d(TAG, "User deleted: " + email);
+        int rows = db.delete(TABLE_USERS, COLUMN_EMAIL + "=?", new String[]{email});
+        if (rows > 0) {
+            Log.d(TAG, "Patient deleted: " + email);
             if (email.equals(currentUserEmail)) currentUserEmail = "";
             return true;
         }
-        Log.w(TAG, "No user found to delete: " + email);
+        Log.w(TAG, "deleteUser: not found " + email);
         return false;
     }
 
     public void clearAllUserData() {
         SQLiteDatabase db = this.getWritableDatabase();
-        db.delete(TABLE_USERS, null, null);
-        db.delete(TABLE_CARE_PROVIDERS, null, null);
+        db.delete(TABLE_USERS,           null, null);
+        db.delete(TABLE_CARE_PROVIDERS,  null, null);
+        db.delete(TABLE_CP_PATIENT_INFO, null, null);
         Log.w(TAG, "All user data cleared");
         currentUserEmail = "";
     }
-    public boolean isMedicalIdTaken(String medicalId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
-                COLUMN_CP_MEDICAL_ID + " = ?", new String[]{medicalId}, null, null, null);
-        boolean exists = cursor.getCount() > 0;
-        cursor.close();
-        return exists;
-    }
-    // Get existing cp_patient_info for this email + provider (if any)
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CP ↔ PATIENT LINK TABLE
+    // ═══════════════════════════════════════════════════════════════════════
+
     public Cursor getCpPatientInfo(String email, String providerMedicalId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        return db.query(
-                TABLE_CP_PATIENT_INFO,
-                null,
+        return this.getReadableDatabase().query(TABLE_CP_PATIENT_INFO, null,
                 COL_CP_EMAIL + "=? AND " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
-                new String[]{email, providerMedicalId},
-                null, null, null
-        );
+                new String[]{email, providerMedicalId}, null, null, null);
     }
 
-    // Generate next patient ID for this provider, e.g. CP123-P1, CP123-P2...
     public String getNextPatientIdForProvider(String providerMedicalId) {
-        SQLiteDatabase db = this.getReadableDatabase();
         String prefix = "CP" + providerMedicalId + "-P";
-
-        Cursor cursor = db.rawQuery(
-                "SELECT " + COL_CP_PATIENT_ID +
-                        " FROM " + TABLE_CP_PATIENT_INFO +
-                        " WHERE " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
-                new String[]{providerMedicalId}
-        );
-
+        Cursor c = this.getReadableDatabase().rawQuery(
+                "SELECT " + COL_CP_PATIENT_ID + " FROM " + TABLE_CP_PATIENT_INFO
+                        + " WHERE " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
+                new String[]{providerMedicalId});
         int max = 0;
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                String pid = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PATIENT_ID));
+        if (c != null) {
+            while (c.moveToNext()) {
+                String pid = c.getString(c.getColumnIndexOrThrow(COL_CP_PATIENT_ID));
                 if (pid != null && pid.startsWith(prefix)) {
-                    int dashIndex = pid.lastIndexOf("-P");
-                    if (dashIndex != -1 && dashIndex + 2 < pid.length()) {
+                    int dash = pid.lastIndexOf("-P");
+                    if (dash != -1 && dash + 2 < pid.length()) {
                         try {
-                            int num = Integer.parseInt(pid.substring(dashIndex + 2));
-                            if (num > max) max = num;
+                            int n = Integer.parseInt(pid.substring(dash + 2));
+                            if (n > max) max = n;
                         } catch (NumberFormatException ignored) {}
                     }
                 }
             }
-            cursor.close();
+            c.close();
         }
-        int next = max + 1;
-        return prefix + next;
+        return prefix + (max + 1);
     }
 
-    // Insert or update cp_patient_info
-    public void upsertCpPatientInfo(String email,
-                                    String providerMedicalId,
-                                    String patientId,
-                                    String name,
-                                    String phone,
-                                    String relationshipStatus,
+    public void upsertCpPatientInfo(String email, String providerMedicalId, String patientId,
+                                    String name, String phone, String relationshipStatus,
                                     String medicalConditions) {
-
         SQLiteDatabase db = this.getWritableDatabase();
-
-        ContentValues values = new ContentValues();
-        values.put(COL_CP_EMAIL, email);
-        values.put(COL_CP_PROVIDER_MEDICAL_ID, providerMedicalId);
-        values.put(COL_CP_PATIENT_ID, patientId);
-        values.put(COL_CP_NAME, name);
-        values.put(COL_CP_PHONE, phone);
-        values.put(COL_CP_RELATIONSHIP, relationshipStatus);
-        values.put(COL_CP_MEDICAL_CONDITIONS, medicalConditions);
-        values.put("updated_at", getCurrentIsoTime());
-        values.put("dirty", 1);
-
-        int updated = db.update(
-                TABLE_CP_PATIENT_INFO,
-                values,
+        ContentValues v = new ContentValues();
+        v.put(COL_CP_EMAIL,               email);
+        v.put(COL_CP_PROVIDER_MEDICAL_ID, providerMedicalId);
+        v.put(COL_CP_PATIENT_ID,          patientId);
+        v.put(COL_CP_NAME,                name);
+        v.put(COL_CP_PHONE,               phone);
+        v.put(COL_CP_RELATIONSHIP,        relationshipStatus);
+        v.put(COL_CP_MEDICAL_CONDITIONS,  medicalConditions);
+        v.put("updated_at", getCurrentIsoTime());
+        v.put("dirty", 1);
+        int updated = db.update(TABLE_CP_PATIENT_INFO, v,
                 COL_CP_EMAIL + "=? AND " + COL_CP_PROVIDER_MEDICAL_ID + "=?",
-                new String[]{email, providerMedicalId}
-        );
-
-        if (updated == 0) {
-            db.insert(TABLE_CP_PATIENT_INFO, null, values);
-        }
+                new String[]{email, providerMedicalId});
+        if (updated == 0) db.insert(TABLE_CP_PATIENT_INFO, null, v);
     }
-
-
-
-
 
     public static class CpPatientInfo {
         public final String email;
@@ -602,171 +787,93 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
         public CpPatientInfo(String email, String phone, String medicalConditions,
                              String patientId, String name) {
-            this.email = email;
-            this.phone = phone;
+            this.email             = email;
+            this.phone             = phone;
             this.medicalConditions = medicalConditions;
-            this.patientId = patientId;
-            this.name = name;
+            this.patientId         = patientId;
+            this.name              = name;
         }
     }
+
     public List<CpPatientInfo> getPatientsForProvider(String providerMedicalId) {
         List<CpPatientInfo> list = new ArrayList<>();
-        SQLiteDatabase db = this.getReadableDatabase();
-
-        Cursor cursor = db.query(
-                TABLE_CP_PATIENT_INFO,
-                null,
-                COL_CP_PROVIDER_MEDICAL_ID + "=?",
-                new String[]{providerMedicalId},
-                null, null,
-                COL_CP_PATIENT_ID + " ASC"
-        );
-
-        if (cursor != null && cursor.moveToFirst()) {
+        Cursor c = this.getReadableDatabase().query(TABLE_CP_PATIENT_INFO, null,
+                COL_CP_PROVIDER_MEDICAL_ID + "=?", new String[]{providerMedicalId},
+                null, null, COL_CP_PATIENT_ID + " ASC");
+        if (c != null && c.moveToFirst()) {
             do {
-                String email = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_EMAIL));
-                String phone = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PHONE));
-                String medicalConditions = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_MEDICAL_CONDITIONS));
-                String patientId = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PATIENT_ID));
-                String name = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_NAME));
-
-                list.add(new CpPatientInfo(email, phone, medicalConditions, patientId, name));
-            } while (cursor.moveToNext());
-            cursor.close();
+                list.add(new CpPatientInfo(
+                        c.getString(c.getColumnIndexOrThrow(COL_CP_EMAIL)),
+                        c.getString(c.getColumnIndexOrThrow(COL_CP_PHONE)),
+                        c.getString(c.getColumnIndexOrThrow(COL_CP_MEDICAL_CONDITIONS)),
+                        c.getString(c.getColumnIndexOrThrow(COL_CP_PATIENT_ID)),
+                        c.getString(c.getColumnIndexOrThrow(COL_CP_NAME))
+                ));
+            } while (c.moveToNext());
+            c.close();
         }
-
         return list;
     }
-    public void markAsSyncedByEmail(String tableName, String email, String cloudId) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("cloud_id", cloudId);
-        values.put("dirty", 0);
-        db.update(tableName, values, "patient_email = ?", new String[]{email});
-    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SYNC HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
+
     public Cursor getDirtyRows(String tableName) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        return db.query(tableName, null, "dirty = 1", null, null, null, null);
+        return this.getReadableDatabase().query(tableName, null,
+                "dirty=1", null, null, null, null);
     }
 
     public void markAsSynced(String tableName, String idColumn, long rowId, String cloudId) {
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("cloud_id", cloudId);
-        values.put("dirty", 0);
-        db.update(tableName, values, idColumn + " = ?", new String[]{String.valueOf(rowId)});
+        ContentValues v = new ContentValues();
+        v.put("cloud_id", cloudId);
+        v.put("dirty", 0);
+        db.update(tableName, v, idColumn + "=?", new String[]{String.valueOf(rowId)});
     }
 
-
-    // Simple wrapper so Activities can ask if a user exists
-    public boolean checkUserExists(String email) {
-        return isUserRegistered(email);
-    }
-
-    public String getCareProviderMedicalIdForPatient(String patientEmail) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(
-                TABLE_CP_PATIENT_INFO,
-                new String[]{COL_CP_PROVIDER_MEDICAL_ID},
-                COL_CP_EMAIL + " = ?",
-                new String[]{patientEmail},
-                null, null, null
-        );
-        String medicalId = null;
-        if (cursor != null && cursor.moveToFirst()) {
-            medicalId = cursor.getString(cursor.getColumnIndexOrThrow(COL_CP_PROVIDER_MEDICAL_ID));
-            cursor.close();
-        }
-        return medicalId;
-    }
-    public boolean updateUserPassword(String email, String newPassword) {
-        if (email == null || email.isEmpty()) return false;
+    public void markAsSyncedByEmail(String tableName, String email, String cloudId) {
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("password", newPassword);
-        int rows = db.update("users", values, "email = ?", new String[]{email});
-        return rows > 0;
+        ContentValues v = new ContentValues();
+        v.put("cloud_id", cloudId);
+        v.put("dirty", 0);
+        db.update(tableName, v, "patient_email=?", new String[]{email});
     }
 
-    public boolean hasPasswordSet(String email) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor c = db.query(
-                "users",
-                new String[]{"password"},
-                "email = ?",
-                new String[]{email},
-                null, null, null
-        );
-        boolean hasPassword = false;
-        if (c != null && c.moveToFirst()) {
-            String pwd = c.getString(c.getColumnIndexOrThrow("password"));
-            hasPassword = (pwd != null && !pwd.isEmpty());
-            c.close();
-        }
-        return hasPassword;
-    }
+    // ═══════════════════════════════════════════════════════════════════════
+    // INTERNAL HELPERS
+    // ═══════════════════════════════════════════════════════════════════════
 
-
-    public String getCareProviderNameByMedicalId(String medicalId) {
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(
-                TABLE_CARE_PROVIDERS,
-                new String[]{COLUMN_CP_NAME},
-                COLUMN_CP_MEDICAL_ID + " = ?",
-                new String[]{medicalId},
-                null, null, null
-        );
-        String name = null;
-        if (cursor != null && cursor.moveToFirst()) {
-            name = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CP_NAME));
-            cursor.close();
-        }
-        return name;
-    }
-    public boolean isPatientLinkedToAnyProvider(String email) {
-        if (email == null || email.isEmpty()) return false;
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor c = db.query(
-                TABLE_CP_PATIENT_INFO,
-                new String[]{COL_CP_EMAIL},
-                COL_CP_EMAIL + " = ?",
-                new String[]{email},
-                null, null, null
-        );
-        boolean linked = (c != null && c.moveToFirst());
-        if (c != null) c.close();
-        Log.d(TAG, "isPatientLinkedToAnyProvider(" + email + ") = " + linked);
-        return linked;
-    }
     private String getCurrentIsoTime() {
-        return new java.text.SimpleDateFormat(
-                "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
-                .format(new java.util.Date());
+        return getCurrentIsoTimeStatic();
     }
 
+    private static String getCurrentIsoTimeStatic() {
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+                .format(new Date());
+    }
 
-
-
-
+    // ═══════════════════════════════════════════════════════════════════════
+    // DEBUG
+    // ═══════════════════════════════════════════════════════════════════════
 
     public void logAllUsers() {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = null;
+        Cursor c = null;
         try {
-            cursor = db.query(TABLE_USERS, new String[]{COLUMN_ID, COLUMN_EMAIL},
+            c = db.query(TABLE_USERS, new String[]{COLUMN_ID, COLUMN_EMAIL},
                     null, null, null, null, null);
-            Log.d(TAG, "Total patients: " + (cursor != null ? cursor.getCount() : 0));
-            if (cursor != null && cursor.moveToFirst()) {
+            Log.d(TAG, "Total patients: " + (c != null ? c.getCount() : 0));
+            if (c != null && c.moveToFirst()) {
                 do {
-                    int id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID));
-                    String email = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL));
-                    Log.d(TAG, "Patient ID: " + id + ", Email: " + email);
-                } while (cursor.moveToNext());
+                    Log.d(TAG, "  id=" + c.getInt(c.getColumnIndexOrThrow(COLUMN_ID))
+                            + " email=" + c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL)));
+                } while (c.moveToNext());
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error logging users: " + e.getMessage());
+            Log.e(TAG, "logAllUsers error: " + e.getMessage());
         } finally {
-            if (cursor != null) cursor.close();
+            if (c != null) c.close();
         }
     }
 }

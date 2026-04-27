@@ -144,7 +144,7 @@ public class ResultActivity extends AppCompatActivity {
         if ("CARE_PROVIDER".equals(role)) {
             intent = new Intent(this, CareProviderDashboardActivity.class);
         } else {
-            intent = new Intent(this, DashboardActivity.class);
+            intent = new Intent(this, PatientMainActivity.class);
         }
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);

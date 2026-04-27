@@ -15,6 +15,7 @@ import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import java.util.Calendar;
 import java.util.Locale;
@@ -46,6 +47,15 @@ public class RegisterPatientActivity extends AppCompatActivity {
 
         dbHelper = UserDatabaseHelper.getInstance(this);
         currentCpEmail = UserDatabaseHelper.getCurrentUserEmail();
+
+        // Set up toolbar with back navigation
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            setSupportActionBar(toolbar);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            }
+        }
 
         initViews();
         setupDobPicker();
@@ -115,7 +125,7 @@ public class RegisterPatientActivity extends AppCompatActivity {
 
     private void handleRegisterPatient() {
         String name = etFullName.getText().toString().trim();
-        String email = etEmail.getText().toString().trim();
+        String email = etEmail.getText().toString().trim().toLowerCase();
         String phone = etPhone.getText().toString().trim();
         String dob = etDob.getText().toString().trim();   // MM/dd/yyyy
         String weightLbsStr = etWeightLbs.getText().toString().trim();
@@ -217,7 +227,11 @@ public class RegisterPatientActivity extends AppCompatActivity {
         intent.putExtra("user_email", email);              // patient’s email
         intent.putExtra("user_role", "CARE_PROVIDER");     // provider role
         startActivity(intent);
+    }
 
-
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 }

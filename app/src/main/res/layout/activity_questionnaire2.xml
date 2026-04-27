@@ -4,15 +4,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    android:background="?attr/backgroundColor">
+    android:background="@color/background">
 
     <TextView
         android:id="@+id/tvQuestionnaireName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:layout_marginBottom="24dp"
-        android:textSize="24sp"
+        android:layout_marginBottom="16dp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="?attr/textColor"
         app:layout_constraintEnd_toEndOf="parent"
@@ -40,13 +40,13 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="16dp"
             android:text="@string/resilience_ready_to_start"
             android:textAlignment="center"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textColor="?attr/textColor" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStart"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -65,6 +65,7 @@
         app:layout_constraintTop_toBottomOf="@id/tvQuestionnaireName">
 
         <ScrollView
+        android:overScrollMode="never"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
@@ -94,11 +95,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="24dp"
                     android:layout_marginEnd="24dp"
-                    android:layout_marginBottom="24dp"
+                    android:layout_marginBottom="16dp"
                     android:text="Resilience Assessment - Please answer honestly to help us understand your coping abilities."
                     android:textAlignment="center"
                     android:textColor="@color/text_secondary"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/ivQuestionIcon" />
@@ -119,7 +120,7 @@
             </LinearLayout>
         </ScrollView>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnNext"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

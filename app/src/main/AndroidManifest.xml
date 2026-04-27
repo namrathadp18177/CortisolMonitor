@@ -15,6 +15,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- USB Permissions -->
     <uses-feature android:name="android.hardware.usb.host" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
 
 
     <uses-permission android:name="android.permission.USB_PERMISSION" />
@@ -74,13 +76,11 @@
             android:exported="false" />
 
         <activity
-            android:name=".EditPatientActivity"
-            android:exported="false" />
-
-        <activity
             android:name=".ViewHistoryActivity"
             android:exported="false" />
         <activity android:name=".AccountDetailsActivity" />
+        <activity android:name=".CareProviderInfoActivity" android:exported="false" />
+        <activity android:name=".ResultDetailActivity" android:exported="false" />
         <activity android:name=".CareProviderAccountActivity" />
         <activity android:name=".ActivateAccountActivity" />
         <activity android:name=".PatientHistoryDetailActivity" />
@@ -92,26 +92,15 @@
         <activity
             android:name=".CortisolGraphActivity"
             android:label="Cortisol Graph"
-            android:parentActivityName=".DashboardActivity" />
+            android:parentActivityName=".PatientMainActivity" />
         <activity
-            android:name=".MeasureCortisolWizardActivity"
-            android:label="Measure Cortisol"
-            android:parentActivityName=".DashboardActivity" />
+            android:name=".PatientMainActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme.Light" />
         <activity
             android:name=".QRWizardActivity"
             android:exported="false" />
         <activity android:name=".PatientResultsActivity" />
-
-
-
-
-
-
-
-
-
-
-
 
         <activity
             android:name=".QuestionnaireActivity2"
@@ -125,9 +114,6 @@
 
         <activity
             android:name=".StepsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".DashboardActivity"
             android:exported="false" />
         <activity
             android:name=".BluetoothListActivity"
@@ -161,10 +147,15 @@
             android:name=".ResponsesViewerActivity"
             android:exported="false" />
         <activity
-            android:name=".UserProfileActivity"
-            android:exported="false"
-            android:theme="@style/AppTheme.Light" /> <!-- FileProvider for sharing files -->
-        <!-- Add this inside the application tag -->
+            android:name=".SessionDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".HealthLogActivity"
+            android:exported="false" />
+        <activity
+            android:name=".HealthCardLogActivity"
+            android:exported="false" />
+        <!-- FileProvider for sharing files -->
 
 
         <provider

@@ -30,7 +30,20 @@ public class FirebaseAuthHelper {
                         FirebaseUser user = mAuth.getCurrentUser();
                         String uid = user.getUid();
                         Log.d(TAG, "Sign up successful. UID: " + uid);
-                        callback.onSuccess(uid);
+                        // Send a verification link to the registered email address
+                        user.sendEmailVerification()
+                                .addOnCompleteListener(verificationTask -> {
+                                    if (verificationTask.isSuccessful()) {
+                                        Log.d(TAG, "Verification email sent to: " + email);
+                                    } else {
+                                        Log.w(TAG, "Failed to send verification email: " +
+                                                (verificationTask.getException() != null
+                                                        ? verificationTask.getException().getMessage()
+                                                        : "unknown error"));
+                                    }
+                                    // Always propagate success — the account was created
+                                    callback.onSuccess(uid);
+                                });
                     } else {
                         String error = task.getException() != null
                                 ? task.getException().getMessage()
@@ -47,14 +60,58 @@ public class FirebaseAuthHelper {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
-                        String uid = user.getUid();
-                        Log.d(TAG, "Login successful. UID: " + uid);
-                        callback.onSuccess(uid);
+                        // Reload to get the latest verification status from Firebase servers
+                        user.reload().addOnCompleteListener(reloadTask -> {
+                            FirebaseUser refreshedUser = mAuth.getCurrentUser();
+                            if (refreshedUser != null && refreshedUser.isEmailVerified()) {
+                                String uid = refreshedUser.getUid();
+                                Log.d(TAG, "Login successful. UID: " + uid);
+                                callback.onSuccess(uid);
+                            } else {
+                                // Email not yet verified — sign out and block
+                                mAuth.signOut();
+                                Log.w(TAG, "Login blocked: email not verified for " + email);
+                                callback.onFailure("EMAIL_NOT_VERIFIED");
+                            }
+                        });
                     } else {
                         String error = task.getException() != null
                                 ? task.getException().getMessage()
                                 : "Login failed";
                         Log.e(TAG, "Login failed: " + error);
+                        callback.onFailure(error);
+                    }
+                });
+    }
+
+    // ── Resend Verification Email ────────────────────────
+    public static void resendVerificationEmail(String email, String password, AuthCallback callback) {
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        if (user != null) {
+                            user.sendEmailVerification()
+                                    .addOnCompleteListener(verifyTask -> {
+                                        mAuth.signOut();
+                                        if (verifyTask.isSuccessful()) {
+                                            Log.d(TAG, "Verification email resent to: " + email);
+                                            callback.onSuccess(null);
+                                        } else {
+                                            String error = verifyTask.getException() != null
+                                                    ? verifyTask.getException().getMessage()
+                                                    : "Failed to send email";
+                                            Log.e(TAG, "Resend verification failed: " + error);
+                                            callback.onFailure(error);
+                                        }
+                                    });
+                        } else {
+                            callback.onFailure("Failed to authenticate");
+                        }
+                    } else {
+                        String error = task.getException() != null
+                                ? task.getException().getMessage()
+                                : "Authentication failed";
                         callback.onFailure(error);
                     }
                 });

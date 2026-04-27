@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.ImageView;
@@ -34,6 +33,9 @@ public class QuestionnaireMain extends AppCompatActivity {
     private MaterialCardView instructionsCard;
     private TextView tvInstructions;
 
+    // One shared session ID for the entire assessment visit (screener + all follow-ups)
+    private String sharedSessionId;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,6 +50,9 @@ public class QuestionnaireMain extends AppCompatActivity {
             getSupportActionBar().setElevation(8f);
             getSupportActionBar().setTitle("");
         }
+
+        // One session ID shared across all questionnaires in this visit
+        sharedSessionId = java.util.UUID.randomUUID().toString();
 
         // Initialize database helper using the singleton pattern
         dbHelper = DatabaseHelper.getInstance(this);
@@ -267,22 +272,16 @@ public class QuestionnaireMain extends AppCompatActivity {
     }
 
     private void handleCardClick(String questionnaireType, View cardView) {
-        // Get questionnaire status
-        int status = dbHelper.getQuestionnaireStatus(questionnaireType);
-        
-        // Only allow clicks for non-completed questionnaires
-        if (status == 2) { // Completed - do nothing
-            Log.d("QuestionnaireMain", "Questionnaire " + questionnaireType + " is completed, no action taken");
-            return;
-        } else { // Not started or partially completed
-            startQuestionnaire(questionnaireType);
-        }
+        // Assessments can always be retaken regardless of prior completion status
+        startQuestionnaire(questionnaireType);
     }
 
     private void startQuestionnaire(String questionnaireType) {
-        // All questionnaires now use the same activity
+        // All questionnaires now use the same activity — pass the shared session ID
+        // so all responses in this visit are grouped under one session.
         Intent intent = new Intent(QuestionnaireMain.this, QuestionnaireActivity.class);
         intent.putExtra("QUESTIONNAIRE_TYPE", questionnaireType);
+        intent.putExtra("shared_session_id", sharedSessionId);
         startActivity(intent);
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }

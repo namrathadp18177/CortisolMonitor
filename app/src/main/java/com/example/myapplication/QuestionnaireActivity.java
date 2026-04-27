@@ -57,6 +57,8 @@ public class QuestionnaireActivity extends AppCompatActivity {
     private ArrayList<Integer> answers;
     private String currentQuestionnaireType;
     private List<String> queuedQuestionnaires = new ArrayList<>();
+    /** Single UUID shared by every questionnaire in this assessment run. */
+    private String sessionId;
 
     // UI elements
     private TextView tvPartTitle;
@@ -110,6 +112,13 @@ public class QuestionnaireActivity extends AppCompatActivity {
 
         responses = new HashMap<>();
         executor = Executors.newSingleThreadExecutor();
+
+        // Use the session ID passed by QuestionnaireMain (same visit) or generate a fresh one.
+        String passedSessionId = getIntent().getStringExtra("shared_session_id");
+        sessionId = (passedSessionId != null && !passedSessionId.isEmpty())
+                ? passedSessionId
+                : java.util.UUID.randomUUID().toString();
+
         setupQuestions(currentQuestionnaireType);
         setupButtons();
         loadQuestionsForCurrentPart();
@@ -704,12 +713,11 @@ public class QuestionnaireActivity extends AppCompatActivity {
                         answer
                 );
 
-                // Set questionnaire type and timestamp
+                // Set questionnaire type, timestamp, user, and session
                 response.setQuestionnaireType(finalQuestionnaireType);
                 response.setTimestamp(System.currentTimeMillis());
-
-                // Explicitly set user email
                 response.setUserEmail(userEmail);
+                response.setSessionId(sessionId);
 
                 dbHelper.getQuestionnaireDao().insertResponse(response);
                 new SyncManager(getApplicationContext()).pushAllDirtyData(null);
@@ -724,6 +732,13 @@ public class QuestionnaireActivity extends AppCompatActivity {
 
             // Handle specific questionnaire processing
             if ("MENTAL_HEALTH_SCREENER".equals(finalQuestionnaireType)) {
+                // ── New screener run: clear all individual questionnaire data from any
+                //    previous session so stale scores don't pollute the new assessment. ──
+                summary.setPhq9Filled(false);
+                summary.setBdiFilled(false);
+                summary.setGad7Filled(false);
+                summary.setBrsFilled(false);
+
                 // Calculate section scores for the screener
                 int scoreA = 0, scoreB = 0, scoreC = 0, scoreD = 0, scoreE = 0, scoreF = 0;
                 int totalScore = 0;
@@ -988,6 +1003,9 @@ public class QuestionnaireActivity extends AppCompatActivity {
 
     private void navigateToResults() {
         Intent intent = new Intent(this, QuestionnaireResultsActivity.class);
+        if (sessionId != null && !sessionId.isEmpty()) {
+            intent.putExtra("session_id", sessionId);
+        }
         startActivity(intent);
         finish();
     }

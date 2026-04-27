@@ -10,92 +10,107 @@
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/colorPrimary"
-        android:elevation="4dp"
-        app:titleTextColor="@color/white"
+        android:background="@color/toolbar_background"
+        android:elevation="0dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:title="Preparation"
+        app:titleTextColor="@color/text_on_primary" />
 
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
-        app:layout_constraintTop_toBottomOf="@+id/toolbar"
+        android:overScrollMode="never"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:paddingStart="20dp"
+            android:paddingTop="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="24dp">
 
-            <!-- Header Section -->
-            <ImageView
-                android:id="@+id/ivInstructions"
-                android:layout_width="107dp"
-                android:layout_height="85dp"
-                android:layout_gravity="center"
-                android:layout_marginTop="16dp"
-                android:contentDescription="Instructions Icon"
-                android:src="@drawable/dna_20" />
-
-            <TextView
-                android:id="@+id/tvInstructionsTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="16dp"
-                android:text="Pre-Test Preparation Steps"
-                android:textColor="@color/colorPrimary"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <TextView
+            <!-- Header -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:text="Complete these steps before starting your test:"
-                android:textSize="16sp"
-                android:layout_marginBottom="24dp" />
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginBottom="20dp">
+
+                <ImageView
+                    android:id="@+id/ivInstructions"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_marginBottom="14dp"
+                    android:src="@drawable/dna_20"
+                    android:contentDescription="Instructions Icon"
+                    app:tint="@color/primary" />
+
+                <TextView
+                    android:id="@+id/tvInstructionsTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Pre-Test Preparation"
+                    android:textColor="@color/primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Complete these steps before starting your cortisol test."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="15sp"
+                    android:lineSpacingExtra="2dp" />
+            </LinearLayout>
 
             <!-- Instructions Card -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/colorCardBackground"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                android:layout_marginBottom="20dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="18dp">
 
                     <!-- Step 1 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="20dp">
 
                         <TextView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:text="1"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:background="@color/colorPrimary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="@drawable/bg_step_circle"
                             android:gravity="center"
-                            android:layout_marginEnd="12dp" />
+                            android:text="1"
+                            android:textColor="@color/text_on_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -106,58 +121,19 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:layout_marginBottom="6dp"
                                 android:text="Timing Guidelines"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimary"
-                                android:layout_marginBottom="8dp" />
+                                android:textColor="@color/primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
 
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:layout_marginBottom="4dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Avoid eating, drinking, or brushing teeth for 60 minutes before collection"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Rinse mouth thoroughly with water 30 minutes before collection"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
+                                android:text="Refrain from eating, drinking, or brushing your teeth for at least 60 minutes prior to sample collection."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="3dp" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -166,18 +142,18 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="20dp">
 
                         <TextView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:text="2"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:background="@color/colorPrimary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="@drawable/bg_step_circle"
                             android:gravity="center"
-                            android:layout_marginEnd="12dp" />
+                            android:text="2"
+                            android:textColor="@color/text_on_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -188,58 +164,19 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:layout_marginBottom="6dp"
                                 android:text="Prepare Your Test Kit"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimary"
-                                android:layout_marginBottom="8dp" />
+                                android:textColor="@color/primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
 
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:layout_marginBottom="4dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Ensure you have the complete saliva sampling kit: collector, compression tube, and extraction tube"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Verify the LoC cartridge is available and sealed"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
+                                android:text="Confirm that the saliva collector, compression tube, extraction tube, and a sealed LoC cartridge are available."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="3dp" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -248,18 +185,18 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="20dp">
 
                         <TextView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:text="3"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:background="@color/colorPrimary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="@drawable/bg_step_circle"
                             android:gravity="center"
-                            android:layout_marginEnd="12dp" />
+                            android:text="3"
+                            android:textColor="@color/text_on_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -270,34 +207,19 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="Wash Your Hands"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimary"
-                                android:layout_marginBottom="8dp" />
+                                android:layout_marginBottom="6dp"
+                                android:text="Check Analyzer Status"
+                                android:textColor="@color/primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
 
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Clean your hands thoroughly with soap and water before handling the test components"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
+                                android:text="Verify that the analyzer is powered on, displaying a green status indicator, and has adequate battery charge."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="3dp" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -306,18 +228,18 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="20dp">
 
                         <TextView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:text="4"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:background="@color/colorPrimary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="@drawable/bg_step_circle"
                             android:gravity="center"
-                            android:layout_marginEnd="12dp" />
+                            android:text="4"
+                            android:textColor="@color/text_on_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -328,58 +250,19 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="Check Analyzer Status"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimary"
-                                android:layout_marginBottom="8dp" />
+                                android:layout_marginBottom="6dp"
+                                android:text="Verify Bluetooth Connection"
+                                android:textColor="@color/primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
 
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:layout_marginBottom="4dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Confirm the handheld analyzer is powered on (green indicator light visible)"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Ensure the analyzer battery has sufficient charge for testing"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
+                                android:text="Ensure Bluetooth is enabled on your mobile device prior to initiating the test."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="3dp" />
                         </LinearLayout>
                     </LinearLayout>
 
@@ -387,76 +270,18 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="16dp">
-
-                        <TextView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:text="5"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:background="@color/colorPrimary"
-                            android:gravity="center"
-                            android:layout_marginEnd="12dp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Verify Bluetooth Connection"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimary"
-                                android:layout_marginBottom="8dp" />
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Enable Bluetooth on your smartphone"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Step 6 -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
                         android:orientation="horizontal">
 
                         <TextView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:text="6"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white"
-                            android:background="@color/colorPrimary"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:layout_marginEnd="12dp"
+                            android:background="@drawable/bg_step_circle"
                             android:gravity="center"
-                            android:layout_marginEnd="12dp" />
+                            android:text="5"
+                            android:textColor="@color/text_on_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -467,86 +292,77 @@
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:layout_marginBottom="6dp"
                                 android:text="Review the Test Procedure"
-                                android:textSize="16sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/colorPrimary"
-                                android:layout_marginBottom="8dp" />
+                                android:textColor="@color/primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
 
-                            <LinearLayout
+                            <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:layout_marginBottom="4dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Familiarize yourself with the 4-step sampling process: Collection → Extraction → Storage → Loading"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="▸ "
-                                    android:textSize="14sp"
-                                    android:textColor="#FFA726"
-                                    android:layout_marginEnd="4dp" />
-
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Note that you will need to wait 20 minutes after loading the sample onto the cartridge before reading results"
-                                    android:textSize="14sp"
-                                    android:textColor="#666666"
-                                    android:lineSpacingExtra="2dp" />
-                            </LinearLayout>
+                                android:text="Familiarize yourself with the 4-stage workflow: Collection → Extraction → Storage → Loading."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:lineSpacingExtra="3dp" />
                         </LinearLayout>
                     </LinearLayout>
 
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Important Note -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
-                app:cardBackgroundColor="#FFF3CD">
+                android:layout_marginBottom="20dp"
+                app:cardBackgroundColor="@color/primary_surface"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
 
-            </androidx.cardview.widget.CardView>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Important"
+                        android:textColor="@color/primary_dark"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Make sure all preparation steps are complete before continuing. This helps improve sample quality and result accuracy."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:lineSpacingExtra="3dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Start Test Button -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_start_test"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:text="Continue to Perform Test"
-                android:textSize="16sp"
-                android:textStyle="bold"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="@color/primary"
+                android:gravity="center"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Continue to Test"
+                android:textAllCaps="false"
                 android:textColor="@color/white"
-                android:backgroundTint="@color/colorPrimary"
-                android:layout_marginBottom="16dp" />
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="16dp" />
 
         </LinearLayout>
     </ScrollView>

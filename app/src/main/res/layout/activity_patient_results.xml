@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:overScrollMode="never"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="@color/background">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,30 +17,32 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="#FFFFFF">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+        app:strokeColor="@color/border"
+        app:strokeWidth="1dp"
+            app:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Patient Results"
-                    android:textSize="20sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="#1A1A2E" />
+                    android:textColor="@color/text_primary" />
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="8dp"
-                    android:layout_marginBottom="12dp"
-                    android:background="#E0E0E0" />
+                    android:layout_marginBottom="16dp"
+                    android:background="@color/divider_color" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -51,7 +54,7 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@android:drawable/ic_menu_myplaces"
-                        app:tint="#5C6BC0" />
+                        app:tint="@color/primary" />
 
                     <TextView
                         android:id="@+id/tvPatientEmail"
@@ -59,7 +62,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:textSize="14sp"
-                        android:textColor="#555555"
+                        android:textColor="@color/text_secondary"
                         android:text="Patient: —" />
 
                 </LinearLayout>
@@ -75,7 +78,7 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@android:drawable/ic_menu_today"
-                        app:tint="#5C6BC0" />
+                        app:tint="@color/primary" />
 
                     <TextView
                         android:id="@+id/tvDate"
@@ -83,7 +86,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:textSize="14sp"
-                        android:textColor="#555555"
+                        android:textColor="@color/text_secondary"
                         android:text="Date: —" />
 
                 </LinearLayout>
@@ -96,24 +99,26 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="#FFFFFF">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+        app:strokeColor="@color/border"
+        app:strokeWidth="1dp"
+            app:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="CORTISOL TREND"
-                    android:textSize="11sp"
+                    android:text="Cortisol Trend"
+                    android:textSize="12sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.1"
-                    android:textColor="#5C6BC0" />
+                    android:textColor="@color/primary" />
 
                 <com.github.mikephil.charting.charts.LineChart
                     android:id="@+id/lineChart"
@@ -129,25 +134,27 @@
             android:id="@+id/resultCategoryCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/colorPrimary">
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+        app:strokeColor="@color/border"
+        app:strokeWidth="1dp"
+            app:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="16dp">
 
                 <TextView
                     android:id="@+id/tvStressCategory"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
+                    
                     android:text="—"
-                    android:textColor="@android:color/white"
-                    android:textSize="24sp"
+                    android:textColor="@color/white"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -155,7 +162,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:text="Stress Level"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/white"
                     android:textSize="14sp" />
 
                 <ProgressBar
@@ -166,14 +173,14 @@
                     android:layout_marginTop="6dp"
                     android:max="100"
                     android:progress="0"
-                    android:progressTint="@android:color/white" />
+                    android:progressTint="@color/primary" />
 
                 <TextView
                     android:id="@+id/tvStressDescription"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:textColor="@android:color/white"
+                    android:textColor="@color/white"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp"
                     android:text="" />
@@ -185,34 +192,36 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="#FFFFFF">
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+        app:strokeColor="@color/border"
+        app:strokeWidth="1dp"
+            app:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="CORTISOL"
-                    android:textSize="11sp"
+                    android:text="Cortisol"
+                    android:textSize="12sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.1"
-                    android:textColor="#5C6BC0" />
+                    android:textColor="@color/primary" />
 
                 <TextView
                     android:id="@+id/tvCortisol"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:textSize="26sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="#1A1A2E"
+                    android:textColor="@color/text_primary"
                     android:text="— ng/mL" />
 
                 <TextView
@@ -226,7 +235,7 @@
                     android:paddingBottom="4dp"
                     android:background="@drawable/badge_background"
                     android:textSize="12sp"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/text_primary"
                     android:text="Normal" />
 
             </LinearLayout>
@@ -236,25 +245,27 @@
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="#FFFFFF">
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+        app:strokeColor="@color/border"
+        app:strokeWidth="1dp"
+            app:cardBackgroundColor="@color/surface">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:padding="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="ALL TESTS THIS DAY"
-                    android:textSize="11sp"
+                    android:text="All Tests This Day"
+                    android:textSize="12sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.1"
-                    android:textColor="#5C6BC0" />
+                    android:textColor="@color/primary" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -268,9 +279,9 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:textSize="13sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:textColor="#4CAF50"
+                        android:textColor="@color/primary"
                         android:text="Peak: —" />
 
                     <TextView
@@ -278,9 +289,9 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:textSize="13sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
-                        android:textColor="#2196F3"
+                        android:textColor="@color/primary"
                         android:text="Lowest: —" />
 
                 </LinearLayout>
@@ -303,39 +314,59 @@
             android:visibility="gone"
             android:gravity="center"
             android:padding="32dp"
-            android:textSize="15sp"
-            android:textColor="#999999"
+            android:textSize="14sp"
+            android:textColor="@color/text_hint"
             android:text="No results found for this date." />
 
+        <!-- Action Buttons -->
         <!-- Action Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:layout_marginTop="8dp"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="24dp"
+            android:orientation="horizontal"
+            android:baselineAligned="false">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnExportCsv"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="60dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:padding="14dp"
-                android:background="@color/colorPrimary"
+                android:gravity="center"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:text="Export CSV"
-                android:textColor="@android:color/white" />
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/text_secondary"
+                app:cornerRadius="16dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnHome"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="60dp"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:padding="14dp"
-                android:background="#757575"
-                android:text="Return to Home"
-                android:textColor="@android:color/white" />
+                android:gravity="center"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Return to Dashboard"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end"
+                app:backgroundTint="@color/text_secondary"
+                app:cornerRadius="16dp" />
 
         </LinearLayout>
 

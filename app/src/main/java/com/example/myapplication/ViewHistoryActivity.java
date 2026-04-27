@@ -5,6 +5,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
@@ -24,15 +25,28 @@ public class ViewHistoryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_history);
 
-        rvHistory = findViewById(R.id.rvHistory);
+        // Set up toolbar with back navigation
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            setSupportActionBar(toolbar);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            }
+        }
 
-        // Add this line:
+        rvHistory = findViewById(R.id.rvHistory);
         rvHistory.setLayoutManager(
                 new androidx.recyclerview.widget.LinearLayoutManager(this)
         );
 
         List<PatientHistoryRow> rows = HistoryDataHelper.getAllPatientHistory(this);
         rvHistory.setAdapter(new HistoryAdapter(rows));
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 
 

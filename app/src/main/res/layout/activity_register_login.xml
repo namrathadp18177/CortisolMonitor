@@ -1,40 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="24dp"
-    android:background="@color/background"
+    android:background="@color/primary"
+    android:fillViewport="true"
+    android:scrollbars="none"
+    android:overScrollMode="never"
     tools:context=".RegisterLoginActivity">
 
-    <ImageView
-        android:id="@+id/ivWellnessIcon"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginTop="32dp"
-        android:layout_marginBottom="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <ScrollView
-        android:id="@+id/scrollView"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        android:scrollbars="none"
-        android:overScrollMode="never"
-        app:layout_constraintTop_toBottomOf="@id/ivWellnessIcon"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
+        <!-- Brand header -->
+        <LinearLayout
+            android:id="@+id/brandHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="52dp"
+            android:paddingBottom="28dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <ImageView
+                android:id="@+id/ivWellnessIcon"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_marginBottom="14dp"
+                android:src="@drawable/app_logo"
+                android:scaleType="fitCenter"
+                android:contentDescription="Cortisol Monitor logo" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cortisol Monitor"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/white" />
+
+        </LinearLayout>
+
+        <!-- White card -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            style="@style/Widget.App.CardView">
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@color/background"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -46,20 +67,50 @@
                     android:id="@+id/tvTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Cortisol Monitor"
-                    android:textSize="28sp"
+                    android:text="Welcome back"
+                    android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"
-                    android:textAlignment="center"
-                    android:layout_marginBottom="24dp"/>
+                    android:layout_marginBottom="4dp" />
 
-                <!-- Tab bar: Patient | Care Provider (signup only) -->
+                <TextView
+                    android:id="@+id/tvSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Sign in to continue"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="28dp" />
 
-                <!-- Tab bar: Patient | Care Provider (signup only) -->
+                <!-- Email verification reminder banner — shown after first registration -->
+                <LinearLayout
+                    android:id="@+id/emailVerificationBanner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="#FFF3CD"
+                    android:padding="12dp"
+                    android:layout_marginBottom="16dp"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📧 Please verify your email before logging in. Check your inbox (and spam folder) for the verification link."
+                        android:textSize="13sp"
+                        android:textColor="#856404"
+                        android:lineSpacingMultiplier="1.3" />
+
+                </LinearLayout>
+
+                <!-- Tab bar -->
                 <LinearLayout
                     android:id="@+id/tabLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="62dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_marginBottom="20dp"
                     android:orientation="horizontal"
                     android:background="@drawable/tab_container_bg"
@@ -69,12 +120,13 @@
                     <com.google.android.material.tabs.TabLayout
                         android:id="@+id/tabLayoutInner"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
                         app:tabMode="fixed"
                         app:tabGravity="fill"
                         app:tabBackground="@drawable/tab_selector_bg"
-                        app:tabSelectedTextColor="@android:color/white"
-                        app:tabTextColor="@color/primary"
+                        app:tabSelectedTextColor="@color/text_on_primary"
+                        app:tabTextColor="@color/text_secondary"
                         app:tabIndicatorHeight="0dp"
                         app:tabIconTint="@color/tab_icon_selector"
                         app:tabRippleColor="@android:color/transparent">
@@ -92,12 +144,9 @@
                             android:icon="@drawable/ic_stethoscope" />
 
                     </com.google.android.material.tabs.TabLayout>
-
                 </LinearLayout>
 
-
-
-                <!-- ===== PATIENT FORM (existing fields) ===== -->
+                <!-- ═══════ PATIENT FORM ═══════ -->
                 <LinearLayout
                     android:id="@+id/layoutPatientForm"
                     android:layout_width="match_parent"
@@ -114,15 +163,15 @@
                             android:id="@+id/etEmail"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Email"
-                            android:inputType="textEmailAddress"/>
+                            android:hint="Email address"
+                            android:inputType="textEmailAddress" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/passwordInputLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="4dp"
                         app:passwordToggleEnabled="true"
                         style="@style/Widget.App.TextInputLayout">
                         <com.google.android.material.textfield.TextInputEditText
@@ -130,21 +179,26 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="Password"
-                            android:inputType="textPassword"/>
+                            android:inputType="textPassword" />
                     </com.google.android.material.textfield.TextInputLayout>
+
                     <TextView
                         android:id="@+id/tvForgotPassword"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Forgot Password?"
+                        android:text="Forgot password?"
                         android:textColor="@color/primary"
                         android:textSize="14sp"
-                        android:padding="4dp"
-                        android:layout_marginBottom="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp"
+                        android:layout_marginBottom="20dp"
                         android:layout_gravity="end"
                         android:clickable="true"
                         android:focusable="true"
-                        android:background="?android:attr/selectableItemBackground"/>
+                        android:minHeight="48dp"
+                        android:background="?android:attr/selectableItemBackground" />
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/confirmPasswordInputLayout"
@@ -158,11 +212,10 @@
                             android:id="@+id/etConfirmPassword"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Confirm Password"
-                            android:inputType="textPassword"/>
+                            android:hint="Confirm password"
+                            android:inputType="textPassword" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Date of Birth -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/dobInputLayout"
                         android:layout_width="match_parent"
@@ -174,13 +227,11 @@
                             android:id="@+id/etDateOfBirth"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Date of Birth (MM/DD/YYYY)"
-                            android:inputType="date"
+                            android:hint="Date of birth (MM/DD/YYYY)"
                             android:focusable="false"
-                            android:clickable="true"/>
+                            android:clickable="true" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Age -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/ageInputLayout"
                         android:layout_width="match_parent"
@@ -192,23 +243,20 @@
                             android:id="@+id/etAge"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Age (calculated)"
-                            android:inputType="number"
-                            android:focusable="false"
-                            android:enabled="false"/>
+                            android:hint="Age (calculated automatically)"
+                            android:enabled="false" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Sex -->
                     <TextView
                         android:id="@+id/tvSexLabel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Sex"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
                         android:visibility="gone"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp" />
 
                     <RadioGroup
                         android:id="@+id/rgSex"
@@ -221,30 +269,32 @@
                             android:id="@+id/rbMale"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:text="Male"
                             android:checked="true"
-                            android:layout_weight="1"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_primary"
+                            android:minHeight="48dp" />
                         <RadioButton
                             android:id="@+id/rbFemale"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Female"
                             android:layout_weight="1"
-                            android:textColor="@color/text_primary"/>
+                            android:text="Female"
+                            android:textColor="@color/text_primary"
+                            android:minHeight="48dp" />
                     </RadioGroup>
 
-                    <!-- Race -->
+                    <!-- Race label -->
                     <TextView
                         android:id="@+id/tvRaceLabel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Race"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
                         android:visibility="gone"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/raceInputLayout"
@@ -252,28 +302,37 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
                         android:visibility="gone"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                        app:hintEnabled="false"
+                        style="@style/Widget.App.TextInputLayout">
+
                         <AutoCompleteTextView
                             android:id="@+id/spinnerRace"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Select Race"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="16dp"
+                            android:paddingBottom="16dp"
+                            android:textColorHint="@color/text_hint"
+                            android:hint="Select race"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true"/>
+                            android:focusableInTouchMode="false"
+                            android:clickable="true" />
+
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Relationship Status -->
+                    <!-- Relationship Status label -->
                     <TextView
                         android:id="@+id/tvRelationshipLabel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Relationship Status"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
                         android:visibility="gone"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/relationshipInputLayout"
@@ -281,28 +340,38 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
                         android:visibility="gone"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                        app:hintEnabled="false"
+                        style="@style/Widget.App.TextInputLayout">
+
                         <AutoCompleteTextView
                             android:id="@+id/spinnerRelationshipStatus"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Select Relationship Status"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="16dp"
+                            android:paddingBottom="16dp"
+                            android:textColorHint="@color/text_hint"
+                            android:hint="Select relationship status"
                             android:inputType="none"
                             android:focusable="false"
-                            android:clickable="true"/>
+                            android:focusableInTouchMode="false"
+                            android:clickable="true" />
+
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Weight -->
+
+
                     <TextView
                         android:id="@+id/tvWeightLabel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Weight"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
                         android:visibility="gone"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp" />
 
                     <LinearLayout
                         android:id="@+id/weightLayout"
@@ -322,30 +391,29 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Weight"
-                                android:inputType="numberDecimal"/>
+                                android:inputType="numberDecimal" />
                         </com.google.android.material.textfield.TextInputLayout>
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="match_parent"
                             android:layout_weight="1"
-                            android:text="pounds"
-                            android:textSize="16sp"
+                            android:text="lbs"
+                            android:textSize="14sp"
                             android:gravity="center_vertical|start"
                             android:paddingStart="12dp"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_secondary" />
                     </LinearLayout>
 
-                    <!-- Height -->
                     <TextView
                         android:id="@+id/tvHeightLabel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Height"
-                        android:textSize="16sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
                         android:visibility="gone"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp" />
 
                     <LinearLayout
                         android:id="@+id/heightLayout"
@@ -365,17 +433,15 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Feet"
-                                android:inputType="number"/>
+                                android:inputType="number" />
                         </com.google.android.material.textfield.TextInputLayout>
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="match_parent"
-                            android:text="ft"
-                            android:textSize="16sp"
+                            android:text=" ft  "
+                            android:textSize="14sp"
                             android:gravity="center_vertical"
-                            android:paddingStart="4dp"
-                            android:paddingEnd="12dp"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_secondary" />
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/heightInchesInputLayout"
                             android:layout_width="0dp"
@@ -387,23 +453,21 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Inches"
-                                android:inputType="number"/>
+                                android:inputType="number" />
                         </com.google.android.material.textfield.TextInputLayout>
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="match_parent"
-                            android:text="in"
-                            android:textSize="16sp"
+                            android:text=" in"
+                            android:textSize="14sp"
                             android:gravity="center_vertical"
-                            android:paddingStart="4dp"
-                            android:paddingEnd="4dp"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_secondary" />
                     </LinearLayout>
 
                 </LinearLayout>
-                <!-- ===== END PATIENT FORM ===== -->
+                <!-- ═══════ END PATIENT FORM ═══════ -->
 
-                <!-- ===== CARE PROVIDER FORM ===== -->
+                <!-- ═══════ CARE PROVIDER FORM ═══════ -->
                 <LinearLayout
                     android:id="@+id/layoutCareProviderForm"
                     android:layout_width="match_parent"
@@ -420,7 +484,7 @@
                             android:id="@+id/etCpName"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Full Name"/>
+                            android:hint="Full name" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -432,7 +496,7 @@
                             android:id="@+id/etCpMedicalId"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Medical ID"/>
+                            android:hint="Medical ID" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -445,7 +509,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="Email"
-                            android:inputType="textEmailAddress"/>
+                            android:inputType="textEmailAddress" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -459,7 +523,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="Password"
-                            android:inputType="textPassword"/>
+                            android:inputType="textPassword" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -472,49 +536,58 @@
                             android:id="@+id/etCpConfirmPassword"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Confirm Password"
-                            android:inputType="textPassword"/>
+                            android:hint="Confirm password"
+                            android:inputType="textPassword" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>
-                <!-- ===== END CARE PROVIDER FORM ===== -->
+                <!-- ═══════ END CARE PROVIDER FORM ═══════ -->
 
-                <!-- Remember Me (login only) -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border"
+                    android:layout_marginBottom="16dp" />
+
                 <CheckBox
                     android:id="@+id/cbRememberMe"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="48dp"
                     android:text="Remember me"
                     android:textColor="@color/text_primary"
-                    android:layout_marginBottom="16dp"/>
+                    android:textSize="14sp"
+                    android:buttonTint="@color/primary"
+                    android:layout_marginBottom="20dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSubmit"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Login"
-                    android:layout_marginBottom="16dp"
-                    style="@style/Widget.App.Button"/>
+                    android:minHeight="52dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:text="Sign In"
+                    android:layout_marginBottom="12dp"
+                    style="@style/Widget.App.Button" />
 
                 <TextView
                     android:id="@+id/tvToggleMode"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="New user? Register here"
+                    android:text="New here? Create an account"
                     android:textAlignment="center"
                     android:textColor="@color/primary"
                     android:textSize="14sp"
                     android:clickable="true"
                     android:focusable="true"
                     android:padding="12dp"
-                    android:background="?android:attr/selectableItemBackground"/>
+                    android:minHeight="48dp"
+                    android:background="?android:attr/selectableItemBackground" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"/>
+                <View android:layout_width="match_parent" android:layout_height="16dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-    </ScrollView>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
+</ScrollView>

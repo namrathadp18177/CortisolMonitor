@@ -1,51 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary brand colors -->
-    <color name="primary">#43A047</color>
-    <color name="primary_dark">#2E7D32</color>
-    <color name="secondary">#A5D6A7</color>
-    
-    <!-- Background and surface colors -->
-    <color name="background">#FAFAFA</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="divider_color">#DDDDDD</color>
-    
-    <!-- Text colors -->
-    <color name="text_primary">#263238</color>
-    <color name="text_secondary">#546E7A</color>
 
-    <color name="divider">#1F000000</color>
+    <!-- ══════════════════════════════════════════════════════
+         CORTISOL MONITOR — Calm Wellness Palette
+         Primary:    Forest Green  #2E7D52
+         Secondary:  Soft Green    #66BB6A
+         Background: Off-White     #F1F8F4
+         Light theme only
+    ══════════════════════════════════════════════════════ -->
 
+    <!-- ── Primary (Forest Green) ───────────────────────── -->
+    <color name="primary">#2E7D52</color>
+    <color name="primary_dark">#1B5E38</color>
+    <color name="primary_light">#43A069</color>
+    <color name="primary_surface">#E8F5ED</color>    <!-- light green tint for icon containers -->
 
-    <!-- Accent color -->
-    <color name="accent">#FFC107</color>
-    
-    <!-- Common colors -->
+    <!-- ── Secondary (Soft Green) ───────────────────────── -->
+    <color name="secondary">#66BB6A</color>
+    <color name="secondary_dark">#43A047</color>
+    <color name="secondary_surface">#F1F8F2</color>
+
+    <!-- ── Backgrounds ──────────────────────────────────── -->
+    <color name="background">#F1F8F4</color>         <!-- app page background -->
+    <color name="surface">#FFFFFF</color>             <!-- card / sheet surface -->
+    <color name="surface_elevated">#FFFFFF</color>
+    <color name="input_background">#F0F7F2</color>   <!-- input field fill -->
+
+    <!-- ── Borders / Strokes ────────────────────────────── -->
+    <color name="border">#C8E6C9</color>             <!-- card border — light green tint -->
+    <color name="divider_color">#DCEEE0</color>
+    <color name="divider">#DCEEE0</color>
+    <color name="card_stroke">#C8E6C9</color>
+    <color name="input_border">#A5D6A7</color>
+    <color name="input_border_focused">#2E7D52</color>
+
+    <!-- ── Text ─────────────────────────────────────────── -->
+    <color name="text_primary">#1B3A28</color>        <!-- dark green-black, readable -->
+    <color name="text_secondary">#4A7260</color>      <!-- muted green-gray -->
+    <color name="text_hint">#8FB5A0</color>           <!-- placeholder text -->
+    <color name="text_on_primary">#FFFFFF</color>     <!-- text on green buttons/toolbar -->
+
+    <!-- ── Common ───────────────────────────────────────── -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    
-    <!-- Input field background -->
-    <color name="input_background">#F5F5F5</color>
-    
-    <!-- Status bar color -->
-    <color name="status_bar">#43A047</color>
-    
-    <!-- Legacy color names for backward compatibility -->
-    <color name="colorPrimary">#43A047</color>
-    <color name="colorPrimaryDark">#2E7D32</color>
-    <color name="colorAccent">#FFC107</color>
-    <color name="colorBackground">#FAFAFA</color>
+    <color name="toolbar_background">#2E7D52</color>
+
+    <!-- ── Stress indicators ────────────────────────────── -->
+    <color name="stress_low">#43A047</color>
+    <color name="stress_low_surface">#E8F5E9</color>
+    <color name="stress_moderate">#F9A825</color>
+    <color name="stress_moderate_surface">#FFF8E1</color>
+    <color name="stress_high">#E53935</color>
+    <color name="stress_high_surface">#FFEBEE</color>
+
+    <!-- ── Dark theme tokens (kept for compatibility) ───── -->
+    <color name="bg_dark">#0F1F14</color>
+    <color name="bg_dark_deep">#091409</color>
+    <color name="card_dark">#162B1D</color>
+    <color name="card_border_dark">#2A4A35</color>
+    <color name="text_on_dark_primary">#E8F5ED</color>
+    <color name="text_on_dark_secondary">#8FB5A0</color>
+    <color name="text_on_dark_hint">#4A7260</color>
+
+    <!-- ── Legacy aliases (backward compat) ─────────────── -->
+    <color name="primary_blue">#2E7D52</color>
+    <color name="colorPrimary">#2E7D52</color>
+    <color name="colorPrimaryDark">#1B5E38</color>
+    <color name="colorAccent">#66BB6A</color>
+    <color name="accent">#66BB6A</color>
+    <color name="colorBackground">#F1F8F4</color>
     <color name="colorSurface">#FFFFFF</color>
-    <color name="colorTextPrimary">#263238</color>
-    <color name="colorTextSecondary">#546E7A</color>
+    <color name="colorTextPrimary">#1B3A28</color>
+    <color name="colorTextSecondary">#4A7260</color>
     <color name="colorCardBackground">#FFFFFF</color>
-    <!-- Stress level indicator colors -->
-    <color name="stress_low">#4CAF50</color>      <!-- Green color for low stress -->
-    <color name="stress_moderate">#FFC107</color> <!-- Amber/Yellow color for moderate stress -->
-    <color name="stress_high">#F44336</color>     <!-- Red color for high stress -->
-    
-    <!-- Additional commonly used colors -->
-    <color name="primary_blue">#43A047</color>
-    <color name="light_gray">#F5F5F5</color>
-    <color name="dark_gray">#263238</color>
+    <color name="status_bar">#1B5E38</color>
+    <color name="light_gray">#F0F7F2</color>
+    <color name="dark_gray">#1B3A28</color>
+    <color name="surface_elevated_alias">#FFFFFF</color>
+    <color name="card_highlight">#E8F5ED</color>
+    <color name="card_warning">#FFF8E1</color>
+    <color name="input_bg">#F0F7F2</color>
+<!--    <color name="card_stroke">#C8E6C9</color>-->
+
 </resources>

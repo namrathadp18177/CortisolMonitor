@@ -1,10 +1,8 @@
 package com.example.myapplication;
 
 import android.Manifest;
-import java.lang.reflect.Method;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -12,55 +10,42 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.fragment.app.Fragment;
-import java.util.List;
-import java.util.Arrays;
-import androidx.fragment.app.Fragment;
-import java.util.List;
-import java.util.Arrays;
-import java.util.ArrayList;
-import android.view.MotionEvent;
-import android.widget.FrameLayout;
-
-
-
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 
 import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.GridLabelRenderer;
 import com.jjoe64.graphview.LegendRenderer;
+import com.jjoe64.graphview.Viewport;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
-import com.jjoe64.graphview.GridLabelRenderer;
-import com.jjoe64.graphview.Viewport;
-
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.TimerTask;
-import java.util.UUID;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class OutputBluetooth extends AppCompatActivity {
     private static final String TAG = "OutputBluetooth";
@@ -70,6 +55,8 @@ public class OutputBluetooth extends AppCompatActivity {
     private static final int REQUEST_QR_SCAN = 11;
 
     private boolean autoReconnectEnabled = true;
+
+    private boolean connectOnly = false;
 
 
     private boolean isReconnecting = false;
@@ -89,6 +76,9 @@ public class OutputBluetooth extends AppCompatActivity {
     // UI Elements
     private Button startButton, stopButton, saveButton, settingsButton, connectButton, showButton;
     private TextView textViewAppend;
+    private android.widget.ProgressBar collectionProgressBar;
+    private TextView tvProgressLabel;
+    private TextView tvResultsInstruction;
     private static final int BATCH_SIZE = 1000;
     private int currentBatch = 1;
     private GraphView graphView;
@@ -110,22 +100,31 @@ public class OutputBluetooth extends AppCompatActivity {
     private final ArrayList<Double> dataPointsavgdUnclean = new ArrayList<>();
     private final ArrayList<Double> validCortisolList = new ArrayList<>();
 
-    // Bluetooth fields
-    private final BluetoothAdapter mBA = BluetoothAdapter.getDefaultAdapter();
-    private Set<BluetoothDevice> pairedDevices;
-    private BluetoothDevice myDevice;
-    private BluetoothSocket mySocket = null;
-    private InputStream is;
-    private OutputStream os;
+    // BLE manager (singleton)
+    private BluetoothManager bleManager;
+
+    // Measurement state machine for dark → signal cycling
+    private enum MeasState { IDLE, DARK_PENDING, SIGNAL_PENDING }
+    private volatile MeasState measState = MeasState.IDLE;
+    private int darkPD1 = 0, darkPD2 = 0, darkPD3 = 0; // stored dark baseline
+
+    // Handler-based measurement loop (replaces ScheduledExecutorService)
+    private final Handler measHandler = new Handler(Looper.getMainLooper());
+    private Runnable measurementRunnable;
 
     // Experiment parameters
-    private double analogRef = 5.0;
+    private double analogRef = 2.048; // ADS1118 FSR ±2.048 V (new firmware)
     private double durationOfExp = 600.0;
     private int samplesPerSecond = 5;
     private int movingAvgValue = 4;
     private int ADCbits = 15;
     private boolean[] analogPort = {true, true, true, true};
     private boolean navigatingToResults = false;
+
+    // ---- Static developer-mode hardware controls (defaults per integration guide) ----
+    // These can be adjusted from DeveloperModeActivity via sliders.
+    public static volatile int devLedBrightness = 255; // Firmware default: full brightness
+    public static volatile int devGainWiper     = 128; // Firmware default: mid-scale
 
 
     // State
@@ -137,10 +136,7 @@ public class OutputBluetooth extends AppCompatActivity {
     private String userEmail;
     private boolean started = false;
 
-    // Buffer for partial packets
-    private StringBuilder dataBuffer = new StringBuilder(256);
-
-    // Executor for scheduled polling
+    // Executor for scheduled polling (kept for compatibility; BLE uses measHandler)
     private ScheduledExecutorService scheduler;
     private int errorCount = 0;
     private static final int MAX_ERRORS = 5;
@@ -172,6 +168,14 @@ public class OutputBluetooth extends AppCompatActivity {
 
     public static final ArrayList<Double> devModeAvgY = new ArrayList<>();  // add this
 
+    // Device status (populated from BLE status characteristic, Char 4)
+    /** Raw VBAT ADC value from status packet (16-bit big-endian). Interpreted as mV. */
+    public static volatile int devBatteryVbat = 0;
+    /** Raw VBUS ADC value from status packet. */
+    public static volatile int devBatteryVbus = 0;
+    /** Name of the currently connected BLE device (empty if not connected). */
+    public static volatile String devConnectedDeviceName = "";
+
     // replace
     private static final int BATCHSIZE = 1000;
     // with
@@ -179,20 +183,6 @@ public class OutputBluetooth extends AppCompatActivity {
 
 
 
-
-    // Handler to pass data back to UI thread
-    private final Handler myHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            String stream = msg.getData().getString("data");
-            if (stream == null) {
-                Log.e(TAG, "Received null data stream");
-                return;
-            }
-            dataBuffer.append(stream);
-            processBufferedData();
-        }
-    };
 
     // Database helper
     private DatabaseHelper dbHelper;
@@ -221,6 +211,7 @@ public class OutputBluetooth extends AppCompatActivity {
         sampleTime = intent.getStringExtra("sample_time");
         deviceAddress = intent.getStringExtra("device_address");
         userRole = intent.getStringExtra("user_role");
+        connectOnly = getIntent().getBooleanExtra("connect_only", false);
 
 // If care provider, save experiment under PATIENT's email, not CP's email
         if ("CARE_PROVIDER".equals(userRole)) {
@@ -274,19 +265,43 @@ public class OutputBluetooth extends AppCompatActivity {
         resetGraph();
     }
 
+
     @Override
     protected void onResume() {
         super.onResume();
         navigatingToResults = false;
-        if (mBA == null || !mBA.isEnabled()) {
+
+        // Obtain the BLE manager singleton
+        bleManager = BluetoothManager.getInstance(this);
+
+        // If the BLE singleton is already connected (e.g. passed from connect-only mode),
+        // adopt it immediately without re-connecting.
+        if (bleManager.isConnected()) {
+            bleManager.setCallback(bleCallback);
+            connectionEstablished = true;
+            isConnecting = false;
+            onBluetoothConnected();
+            return;
+        }
+
+        // Normal flow — connect to the device whose address was passed by the wizard
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null || !adapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, 0);
         } else {
-            // BT is on — enable connect button so user can tap it
-            connectButton.setEnabled(true);
+            if (connectButton != null) connectButton.setEnabled(true);
+            if (deviceAddress != null && !deviceAddress.isEmpty()
+                    && !connectionEstablished && !isConnecting) {
+                synchronized (connectionLock) {
+                    isConnecting = true;
+                    connectionEstablished = false;
+                }
+                bleManager.setCallback(bleCallback);
+                bleManager.connect(deviceAddress);
+            }
         }
     }
-
 
 
 
@@ -358,21 +373,38 @@ public class OutputBluetooth extends AppCompatActivity {
                 Toast.makeText(this, "Bluetooth is required for this app", Toast.LENGTH_LONG).show();
             }
 
+        } else if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
+            // Result from BluetoothListActivity (BLE device scanner)
+            String address = data.getStringExtra("device_address");
+            if (address != null && !address.isEmpty()) {
+                deviceAddress = address;
+                Toast.makeText(this, "Connecting to BLE device…", Toast.LENGTH_SHORT).show();
+                synchronized (connectionLock) {
+                    isConnecting = true;
+                    connectionEstablished = false;
+                }
+                if (startButton != null) startButton.setEnabled(false);
+                bleManager = BluetoothManager.getInstance(this);
+                bleManager.setCallback(bleCallback);
+                bleManager.connect(address);
+            }
+
         } else if (requestCode == REQUEST_QR_SCAN
                 && resultCode == RESULT_OK
                 && data != null) {
-            // QR scan result
+            // QR scan result → treat address as BLE device address
             String address = data.getStringExtra("device_address");
             if (address != null) {
-                Toast.makeText(this, "QR scanned! Connecting...",
-                        Toast.LENGTH_SHORT).show();
+                deviceAddress = address;
+                Toast.makeText(this, "QR scanned! Connecting via BLE…", Toast.LENGTH_SHORT).show();
                 synchronized (connectionLock) {
-                    myDevice = mBA.getRemoteDevice(address);
                     isConnecting = true;
                     connectionEstablished = false;
-                    startButton.setEnabled(false);
+                    if (startButton != null) startButton.setEnabled(false);
                 }
-                new ConnectThread(myDevice).start();
+                bleManager = BluetoothManager.getInstance(this);
+                bleManager.setCallback(bleCallback);
+                bleManager.connect(address);
             }
         }
     }
@@ -550,11 +582,12 @@ public class OutputBluetooth extends AppCompatActivity {
             isConnecting = true;
             connectionEstablished = false;
 
-            if (myDevice != null) {
-                new ConnectThread(myDevice).start();
+            if (deviceAddress != null && !deviceAddress.isEmpty()) {
+                // Reconnect BLE using known address
+                bleManager.connect(deviceAddress);
             } else {
-                // No device selected, try to find one
-                isConnecting = false; // Reset since we're going to searchForDevice
+                // No device known — open scanner
+                isConnecting = false;
                 initializeBluetooth();
             }
 
@@ -710,21 +743,15 @@ public class OutputBluetooth extends AppCompatActivity {
                 return;
             }
 
-            shutdownScheduler();
+            stopMeasurementCycle();
             connectionEstablished = false;
             isReconnecting = false;
 
-            if (mySocket != null) {
-                try {
-                    mySocket.close();
-                } catch (IOException ignored) {}
-                mySocket = null;
-            }
-            is = null;
-            os = null;
+            // Disconnect existing BLE connection
+            if (bleManager != null) bleManager.disconnect();
         }
 
-        // Directly show device picker instead of initializeBluetooth()
+        // Show BLE device scanner
         searchForDevice();
     }
 
@@ -780,14 +807,21 @@ public class OutputBluetooth extends AppCompatActivity {
             // Then open ResultActivity
             String role = getIntent().getStringExtra("user_role");
 
+            // Save cortisol to SharedPreferences so CombinedResultsActivity
+            // can pick it up as maxstr3 regardless of navigation path
+            getSharedPreferences("BiomarkerResults", MODE_PRIVATE)
+                    .edit()
+                    .putFloat("latest_cortisol_ng_ml", (float) finalCortisol)
+                    .apply();
+            Log.i(TAG, "Saved latest_cortisol_ng_ml=" + finalCortisol + " to SharedPreferences");
+
             Intent resultActivity = new Intent(this, ResultActivity.class);
             resultActivity.putExtra("max_value_port0", max0);
             resultActivity.putExtra("final_cortisol", finalCortisol);
             resultActivity.putExtra("max_value_port2", max2);
             resultActivity.putExtra("user_email", userEmail);
-            resultActivity.putExtra("user_role", role);   // forward role
+            resultActivity.putExtra("user_role", role);
             startActivity(resultActivity);
-
 
             Log.i(TAG, "Started ResultActivity with max values");
         } catch (Exception e) {
@@ -1563,18 +1597,28 @@ public class OutputBluetooth extends AppCompatActivity {
 //        stopButton = findViewById(R.id.buttonStopBL);
 //        saveButton = findViewById(R.id.buttonSaveBL);
 //       //  settingsButton = findViewById(R.id.buttonSettingBL);
-        connectButton = findViewById(R.id.buttonConnectBL);
-        showButton = findViewById(R.id.buttonShowBL);
-        textViewAppend = findViewById(R.id.textAppendBL);
+        connectButton         = findViewById(R.id.buttonConnectBL);
+        showButton            = findViewById(R.id.buttonShowBL);
+        textViewAppend        = findViewById(R.id.textAppendBL);
+        collectionProgressBar = findViewById(R.id.collectionProgressBar);
+        tvProgressLabel       = findViewById(R.id.tvProgressLabel);
+        tvResultsInstruction  = findViewById(R.id.tvResultsInstruction);
 
         // Set initial button states
         startButton.setEnabled(false);
-//        stopButton.setEnabled(false);
-//        settingsButton.setEnabled(true); // Always allow settings
         connectButton.setEnabled(false); // Will be enabled when Bluetooth is ready
-//        saveButton.setEnabled(false);
-        showButton.setEnabled(true);
-        showButton.setAlpha(1.0f);
+
+        // Results section hidden — only shown when collection completes
+        showButton.setVisibility(View.GONE);
+        if (tvResultsInstruction != null) tvResultsInstruction.setVisibility(View.GONE);
+
+        // Metrics text is developer-mode only (shown in DeveloperModeActivity, not here)
+        View metricsTitle = findViewById(R.id.tvMetricsTitle);
+        if (metricsTitle   != null) metricsTitle.setVisibility(View.GONE);
+        if (textViewAppend != null) textViewAppend.setVisibility(View.GONE);
+        // Progress bar is always shown for all users on this screen
+        if (collectionProgressBar != null) collectionProgressBar.setVisibility(View.VISIBLE);
+        if (tvProgressLabel       != null) tvProgressLabel.setVisibility(View.VISIBLE);
 
         // Add long-press listener to start button for clearing data
         startButton.setOnLongClickListener(v -> {
@@ -1650,155 +1694,216 @@ public class OutputBluetooth extends AppCompatActivity {
     }
 
     private void initializeBluetooth() {
-        try {
-            Log.i(TAG, "Initializing Bluetooth...");
-
-            if (mBA == null) {
-                Toast.makeText(this, "Bluetooth not supported on this device", Toast.LENGTH_LONG).show();
-                Log.e(TAG, "Bluetooth adapter is null - device doesn't support Bluetooth");
-                return;
-            }
-
-            // Check if Bluetooth is enabled
-            if (!mBA.isEnabled()) {
-                Log.i(TAG, "Bluetooth is disabled, requesting to enable...");
-                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-
-                // Check permission for Android 12+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                            != PackageManager.PERMISSION_GRANTED) {
-                        Log.w(TAG, "BLUETOOTH_CONNECT permission not granted, requesting...");
-                        ActivityCompat.requestPermissions(this,
-                                new String[]{Manifest.permission.BLUETOOTH_CONNECT},
-                                REQUEST_BLUETOOTH_PERMISSION);
-                        return;
-                    }
-                }
-
-                startActivityForResult(enableBtIntent, 0);
-                Toast.makeText(this, "Please enable Bluetooth to continue", Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            Log.i(TAG, "Bluetooth is enabled, searching for devices...");
-
-            // Enable UI elements now that Bluetooth is ready
-            connectButton.setEnabled(true);
-//            settingsButton.setEnabled(true);
-            startButton.setEnabled(false); // Will be enabled after connection
-
-            // Search for and connect to device
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter == null) {
+            Toast.makeText(this, "Bluetooth not supported on this device", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!adapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 0);
+        } else {
+            if (connectButton != null) connectButton.setEnabled(true);
+            if (startButton != null) startButton.setEnabled(false);
             searchForDevice();
-
-        } catch (SecurityException e) {
-            Log.e(TAG, "Security exception in initializeBluetooth", e);
-            Toast.makeText(this, "Bluetooth permission denied", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.e(TAG, "Unexpected error in initializeBluetooth", e);
-            Toast.makeText(this, "Error initializing Bluetooth: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
+    /**
+     * Launch the BLE scanner activity so the user can pick a device.
+     * When they tap one, onActivityResult gets the MAC address and connects.
+     */
     private void searchForDevice() {
-        try {
-            // Check permissions first
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    Log.e(TAG, "BLUETOOTH_CONNECT permission not granted");
+        Intent intent = new Intent(this, BluetoothListActivity.class);
+        startActivityForResult(intent, 100);
+    }
+
+    //————————————————————————————
+    // BLE measurement loop (dark → signal cycling)
+    //————————————————————————————
+
+    /**
+     * Start or stop the BLE measurement cycle.
+     * Replaces the old RFCOMM scheduler — now Handler-driven and event-based.
+     */
+    private void sendTimer(boolean start) {
+        stopMeasurementCycle(); // always cancel any pending callbacks first
+
+        if (!start) return;
+
+        if (!hasValidConnection()) {
+            Log.w(TAG, "Cannot start measurement – BLE not connected");
+            return;
+        }
+
+        long intervalMs = Math.max(200L, 1000L / samplesPerSecond);
+        Log.i(TAG, "Starting BLE measurement cycle, interval=" + intervalMs + "ms");
+
+        measurementRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!started || !hasValidConnection()) {
+                    Log.v(TAG, "Measurement cycle stopped");
                     return;
                 }
+                triggerDarkMeasurement();
+                // The next trigger is scheduled in the BLE callback after a
+                // complete dark+signal pair has been processed.
+                // Store interval in a local field so the callback can use it.
+                currentMeasIntervalMs = intervalMs;
             }
+        };
 
-            // Get all paired devices and show a selection dialog
-            pairedDevices = mBA.getBondedDevices();
-            if (pairedDevices == null || pairedDevices.isEmpty()) {
-                Toast.makeText(this, "No paired Bluetooth devices found. Please pair your device first.", Toast.LENGTH_LONG).show();
+        // Small initial delay to let the connection settle
+        measHandler.postDelayed(measurementRunnable, 500);
+    }
+
+    /** Current measurement interval; set by sendTimer() and used by the BLE callback. */
+    private long currentMeasIntervalMs = 200;
+
+    /** Stop any pending measurement callbacks without changing the `started` flag. */
+    private void stopMeasurementCycle() {
+        measHandler.removeCallbacksAndMessages(null);
+        measState = MeasState.IDLE;
+        // Keep scheduler field null-safe for any code that still checks it
+        if (scheduler != null && !scheduler.isShutdown()) {
+            scheduler.shutdownNow();
+            scheduler = null;
+        }
+    }
+
+    /** Trigger step 1: request a dark (baseline) reading from the device. */
+    private void triggerDarkMeasurement() {
+        if (!hasValidConnection()) return;
+        measState = MeasState.DARK_PENDING;
+        bleManager.triggerDarkRead();
+        Log.v(TAG, "Dark read triggered");
+    }
+
+    // -------------------------------------------------------------------------
+    // BLE callback — all dispatched on the main thread by BluetoothManager
+    // -------------------------------------------------------------------------
+    private final BluetoothManager.BleCallback bleCallback = new BluetoothManager.BleCallback() {
+
+        @Override
+        public void onConnected() {
+            synchronized (connectionLock) {
+                connectionEstablished = true;
+                isConnecting         = false;
+            }
+            isReconnecting = false;
+            errorCount     = 0;
+
+            // Send whatever LED/Gain values are currently in the static fields.
+            // These are reset to defaults (200/128) each time QRWizardActivity starts,
+            // and only change if the user visits Developer Mode before running the test.
+            bleManager.setLedBrightness((byte) devLedBrightness);
+            bleManager.setGain((byte) devGainWiper);
+
+            Log.i(TAG, "BLE connected. Settings sent: LED=" + devLedBrightness
+                    + " Gain=" + devGainWiper);
+
+            // If connect-only mode, return RESULT_OK to the wizard
+            if (connectOnly) {
+                Intent result = new Intent();
+                result.putExtra("deviceaddress", deviceAddress);
+                setResult(RESULT_OK, result);
+                finish();
                 return;
             }
 
-            Log.i(TAG, "Found " + pairedDevices.size() + " paired devices");
+            onBluetoothConnected();
 
-            // Create list of devices for selection dialog
-            final ArrayList<BluetoothDevice> deviceList = new ArrayList<>(pairedDevices);
-            final String[] deviceNames = new String[deviceList.size()];
-
-            for (int i = 0; i < deviceList.size(); i++) {
-                BluetoothDevice device = deviceList.get(i);
-                String name = device.getName();
-                if (name == null) name = "Unknown Device";
-                deviceNames[i] = name + " (" + device.getAddress() + ")";
+            // Resume collection if it was already running
+            if (started) {
+                if (startButton  != null) startButton.setEnabled(false);
+                if (connectButton!= null) connectButton.setEnabled(false);
+                if (showButton   != null) showButton.setEnabled(false);
+                sendTimer(true);
             }
+        }
 
-            // Show device selection dialog
+        @Override
+        public void onDisconnected() {
+            synchronized (connectionLock) {
+                connectionEstablished = false;
+            }
+            devConnectedDeviceName = "";
+            stopMeasurementCycle();
+            Log.w(TAG, "BLE disconnected");
+
             runOnUiThread(() -> {
-                new androidx.appcompat.app.AlertDialog.Builder(OutputBluetooth.this)
-                        .setTitle("Select Bluetooth Device")
-                        .setItems(deviceNames, (dialog, which) -> {
-                            // Get selected device
-                            myDevice = deviceList.get(which);
-
-                            Toast.makeText(OutputBluetooth.this,
-                                    "Connecting to: " + myDevice.getName(), Toast.LENGTH_SHORT).show();
-
-                            // Set connection state
-                            synchronized (connectionLock) {
-                                if (isConnecting) {
-                                    Log.w(TAG, "Connection already in progress");
-                                    Toast.makeText(OutputBluetooth.this,
-                                            "Connection already in progress...", Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-                                isConnecting = true;
-                                connectionEstablished = false;
-                            }
-
-                            // Start connection
-                            ConnectThread ct = new ConnectThread(myDevice);
-                            ct.start();
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .setCancelable(true)
-                        .show();
+                if (startButton  != null) startButton.setEnabled(false);
+                if (connectButton!= null) connectButton.setEnabled(true);
+                Toast.makeText(OutputBluetooth.this,
+                        "Device disconnected. Tap Connect to reconnect.",
+                        Toast.LENGTH_LONG).show();
             });
-
-        } catch (SecurityException e) {
-            Log.e(TAG, "Security exception in searchForDevice", e);
-            Toast.makeText(this, "Bluetooth permission denied", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.e(TAG, "Unexpected error in searchForDevice", e);
-            Toast.makeText(this, "Error searching for devices: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
-    }
 
-    //————————————————————————————
-    // Scheduled send/read loop
-    //————————————————————————————
+        @Override
+        public void onOpticalData(byte[] packet) {
+            // Packet: [0xFF][SEQ_H][SEQ_L][0xFE][PD1_H][PD1_L][0xFE][PD2_H][PD2_L][0xFE][PD3_H][PD3_L][0xFD]
+            int seq  = ((packet[1] & 0xFF) << 8) | (packet[2]  & 0xFF);
+            int pd1  = ((packet[4] & 0xFF) << 8) | (packet[5]  & 0xFF);
+            int pd2  = ((packet[7] & 0xFF) << 8) | (packet[8]  & 0xFF);
+            int pd3  = ((packet[10]& 0xFF) << 8) | (packet[11] & 0xFF);
 
-    private void sendTimer(boolean start) {
-        long intervalMs = 1000L / samplesPerSecond;
-        shutdownScheduler();  // always call first
+            if (measState == MeasState.DARK_PENDING) {
+                // Store dark baseline and immediately request the signal reading
+                darkPD1  = pd1;
+                darkPD2  = pd2;
+                darkPD3  = pd3;
+                measState = MeasState.SIGNAL_PENDING;
+                bleManager.triggerSignalRead();
+                Log.v(TAG, "Dark stored: PD1=" + pd1 + " PD2=" + pd2 + " PD3=" + pd3
+                        + "  seq=" + seq);
 
-        if (start) {
-            // Only start if we have a valid connection
-            if (!hasValidConnection()) {
-                Log.w(TAG, "Cannot start timer - connection not established");
-                return;
+            } else if (measState == MeasState.SIGNAL_PENDING) {
+                // We have both dark and signal — compute voltages and process
+                measState = MeasState.IDLE;
+
+                // Convert raw 16-bit unsigned counts to voltage:
+                // FSR = ±2.048 V (ADS1118), single-ended range 0..32767 → 0..+2.048 V
+                double val0 = pd1 * analogRef / (Math.pow(2, ADCbits) - 1);
+                double val1 = pd2 * analogRef / (Math.pow(2, ADCbits) - 1);
+                double val2 = pd3 * analogRef / (Math.pow(2, ADCbits) - 1);
+
+                Log.v(TAG, "Signal: PD1=" + pd1 + " PD2=" + pd2 + " PD3=" + pd3
+                        + "  seq=" + seq);
+
+                processSignalValues(val0, val1, val2);
+
+                // Schedule the next dark→signal cycle after the configured interval
+                if (started && hasValidConnection()) {
+                    measHandler.postDelayed(() -> {
+                        if (started && hasValidConnection()) triggerDarkMeasurement();
+                    }, currentMeasIntervalMs);
+                }
+            } else {
+                Log.w(TAG, "Unexpected optical packet in state " + measState);
             }
-
-            Log.i(TAG, "Starting data collection timer with interval: " + intervalMs + "ms");
-            scheduler = Executors.newSingleThreadScheduledExecutor();
-            scheduler.scheduleWithFixedDelay(
-                    this::pollOnce,
-                    500, // Initial delay to ensure connection is stable
-                    intervalMs,
-                    TimeUnit.MILLISECONDS
-            );
         }
-    }
 
-    // Create a complete reconnection handler that addresses the timeout issues
+        @Override
+        public void onStatusData(byte[] status) {
+            // 6 bytes: [VBAT_H][VBAT_L][VBUS_H][VBUS_L][LED_BRIGHTNESS][GAIN_WIPER]
+            int vbat = ((status[0] & 0xFF) << 8) | (status[1] & 0xFF);
+            int vbus = ((status[2] & 0xFF) << 8) | (status[3] & 0xFF);
+            int led  =   status[4] & 0xFF;
+            int gain =   status[5] & 0xFF;
+            // Expose to developer mode
+            devBatteryVbat = vbat;
+            devBatteryVbus = vbus;
+            Log.d(TAG, "Status: VBAT=" + vbat + " VBUS=" + vbus
+                    + " LED=" + led + " Gain=" + gain);
+        }
+    };
+
+    // smartReconnect() removed — BLE GATT handles reconnection via the
+    // onDisconnected callback; user can tap Connect to re-pair if needed.
+
+    @SuppressWarnings("unused")
     private void smartReconnect() {
         // Only proceed if not already reconnecting and cooldown period has passed
         long currentTime = System.currentTimeMillis();
@@ -1807,31 +1912,21 @@ public class OutputBluetooth extends AppCompatActivity {
 
             isReconnecting = true;
             lastReconnectTime = currentTime;
-
-            Log.i(TAG, "Starting controlled reconnection at sample #" + dataSize);
-
-            // Save current data
+            Log.i(TAG, "BLE reconnect requested at sample #" + dataSize);
             saveCurrentProgress();
-
-            // Create a completely independent thread for reconnection
+            // BLE reconnect: just re-call connect on the manager
+            stopMeasurementCycle();
+            if (bleManager != null && deviceAddress != null) {
+                bleManager.connect(deviceAddress);
+            }
+            isReconnecting = false;
+            /* ---------- legacy RFCOMM code below kept for reference ----------
             Thread reconnectThread = new Thread(() -> {
                 try {
-                    // Pause the scheduler but don't change started state
                     boolean wasStarted = started;
-                    shutdownScheduler();
-
-                    // Close existing connection
+                    stopMeasurementCycle();
                     synchronized (OutputBluetooth.this) {
-                        if (mySocket != null) {
-                            try {
-                                mySocket.close();
-                            } catch (IOException e) {
-                                Log.e(TAG, "Error closing socket", e);
-                            }
-                            mySocket = null;
-                        }
-                        is = null;
-                        os = null;
+                        // no socket to close for BLE
                     }
 
                     // Wait a significant time for resources to be released
@@ -1879,240 +1974,12 @@ public class OutputBluetooth extends AppCompatActivity {
                 }
             });
 
-            reconnectThread.setDaemon(true); // Allow JVM to exit if this thread is hanging
-            reconnectThread.start();
+            /* --- end of legacy RFCOMM reconnect code --- */
         }
     }
 
-    // New connection thread class with clear completion handling
-    private class FinalConnectThread extends Thread {
-        private final BluetoothDevice device;
-        private final boolean restartCollection;
-        private final UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
-
-        FinalConnectThread(BluetoothDevice device, boolean restartCollection) {
-            this.device = device;
-            this.restartCollection = restartCollection;
-        }
-
-        @Override
-        public void run() {
-            try {
-                // Cancel discovery
-                mBA.cancelDiscovery();
-
-                // Try standard connection
-                mySocket = device.createRfcommSocketToServiceRecord(uuid);
-
-                try {
-                    mySocket.connect();
-                } catch (IOException standardEx) {
-                    Log.w(TAG, "Standard connect failed, trying fallback", standardEx);
-
-                    // Close failed socket
-                    try {
-                        mySocket.close();
-                    } catch (IOException ignored) {}
-
-                    // Fallback via reflection
-                    try {
-                        Method fallback = device.getClass().getMethod("createRfcommSocket", int.class);
-                        mySocket = (BluetoothSocket) fallback.invoke(device, 1);
-                        mySocket.connect();
-                    } catch (Exception fallbackEx) {
-                        Log.e(TAG, "Fallback connect also failed", fallbackEx);
-                        runOnUiThread(() ->
-                                Toast.makeText(OutputBluetooth.this, "Connection failed", Toast.LENGTH_SHORT).show());
-
-                        // IMPORTANT: Reset the reconnection flag
-                        isReconnecting = false;
-                        return;
-                    }
-                }
-
-                // Initialize streams
-                is = mySocket.getInputStream();
-                os = mySocket.getOutputStream();
-
-                // Send a command to reset the device and clear buffers
-                os.write("R\r".getBytes());
-                os.flush();
-
-                // Clear input buffer
-                while (is.available() > 0) {
-                    is.skip(is.available());
-                }
-
-                // Update UI on success
-                runOnUiThread(() -> {
-                    Toast.makeText(OutputBluetooth.this, "Connection re-established", Toast.LENGTH_SHORT).show();
-
-                    // Update buttons based on whether we're restarting collection or not
-                    if (restartCollection) {
-                        // Data collection will restart - keep settings enabled to show dialog
-//                        stopButton.setEnabled(true);
-                        connectButton.setEnabled(false);
-//                        settingsButton.setEnabled(true); // Keep enabled to show dialog
-//                        saveButton.setEnabled(false);
-                        showButton.setEnabled(false);
-                        startButton.setEnabled(false);
-                    } else {
-                        // Just reconnected - allow settings since not collecting
-                        startButton.setEnabled(true);
-//                        stopButton.setEnabled(false);
-                        connectButton.setEnabled(true);
-//                        settingsButton.setEnabled(true);
-//                        saveButton.setEnabled(dataSize > 0);   // Only if there's data
-                        showButton.setEnabled(dataSize > 0);   // Only if there's data
-                    }
-
-                    // Restart data collection if needed
-                    if (restartCollection) {
-                        started = true;
-                        sendTimer(true);
-                    }
-
-                    // Log button states for debugging
-                    // logButtonStates("after connection success");
-
-                    // Reset reconnection flags
-                    OutputBluetooth.this.reconnecting = false;
-                    isReconnecting = false;
-                    errorCount = 0;
-
-                    // Don't automatically start data collection - wait for user to press Start
-                    Log.i(TAG, "Connection established. Ready for data collection.");
-                });
-            } catch (Exception e) {
-                Log.e(TAG, "Unexpected error in FinalConnectThread", e);
-
-                // IMPORTANT: Reset the flag even on failure
-                runOnUiThread(() -> {
-                    Toast.makeText(OutputBluetooth.this,
-                            "Connection error - please reconnect manually", Toast.LENGTH_LONG).show();
-                    isReconnecting = false;
-                });
-            }
-        }
-    }
-
-    // Modified pollOnce() method with transparent reconnection
-    private void pollOnce() {
-        // Check if we should still be running
-        if (!started || !connectionEstablished) {
-            Log.v(TAG, "Polling stopped - started: " + started + ", connected: " + connectionEstablished);
-            return;
-        }
-
-        try {
-            // Check socket and stream validity
-            if (mySocket == null || !mySocket.isConnected() || os == null || is == null) {
-                Log.w(TAG, "Socket or streams not ready - Socket: " + (mySocket != null) +
-                        ", Connected: " + (mySocket != null && mySocket.isConnected()) +
-                        ", OutputStream: " + (os != null) + ", InputStream: " + (is != null));
-                throw new IOException("Socket or streams not ready");
-            }
-
-            // ---- WRITE command to MCU ----
-            synchronized (OutputBluetooth.this) {
-                try {
-                    os.write("0\r".getBytes());
-                    os.flush();
-                    Log.v(TAG, "Command sent successfully");
-                } catch (IOException writeEx) {
-                    Log.e(TAG, "Write failed (broken pipe): " + writeEx.getMessage(), writeEx);
-                    if (!isReconnecting && started) {
-                        // Remove frequent reconnection toast - just log and reconnect silently
-                        Log.w(TAG, "Connection lost during write, attempting reconnection");
-                        reconnectBluetooth();
-                    }
-                    return;
-                }
-            }
-
-            // ---- WAIT FOR DATA with timeout ----
-            byte[] buffer = new byte[512];
-            int totalRead = 0;
-            long startTime = System.currentTimeMillis();
-            long timeout = startTime + 1000; // Increased timeout to 1000ms
-
-            while (System.currentTimeMillis() < timeout && totalRead < buffer.length) {
-                synchronized (OutputBluetooth.this) {
-                    if (is != null && is.available() > 0) {
-                        int readBytes = is.read(buffer, totalRead, buffer.length - totalRead);
-                        if (readBytes > 0) {
-                            totalRead += readBytes;
-                            Log.v(TAG, "Read " + readBytes + " bytes, total: " + totalRead);
-                            // Check for packet terminator
-                            if (buffer[totalRead - 1] == 'p') {
-                                Log.v(TAG, "Found packet terminator");
-                                break;
-                            }
-                        }
-                    }
-                }
-                Thread.sleep(10); // avoid CPU spinning
-            }
-
-            // ---- HANDLE THE DATA ----
-            if (totalRead > 0) {
-                errorCount = 0;
-                String pkt = new String(buffer, 0, totalRead).trim();
-
-
-                Log.v(TAG, "Sample #" + dataSize + " received (" + totalRead + " bytes): " + pkt);
-
-                Message msg = myHandler.obtainMessage();
-                Bundle b = new Bundle();
-                b.putString("data", pkt);
-                msg.setData(b);
-                myHandler.sendMessage(msg);
-            } else {
-                errorCount++;
-                long readTime = System.currentTimeMillis() - startTime;
-                Log.w(TAG, "Poll missed: no data read in " + readTime + "ms (consecutive errors=" + errorCount + ")");
-
-                if (errorCount >= MAX_ERRORS && !isReconnecting && started) {
-                    // Remove frequent error toast - just log and reconnect silently
-                    Log.w(TAG, "Multiple unexpected errors, attempting reconnection");
-                    reconnectBluetooth();
-                    errorCount = 0;
-                }
-            }
-
-//            // ✅ Check if we hit batch limit
-//            runOnUiThread(this::checkSampleLimit);;
-
-            // only redraw every 3 samples
-//            if (graphCount == 3) {
-//                graphCount = 0;
-//                drawGraph();
-//            }
-
-            // Update Save and Show button states when data is available
-            runOnUiThread(this::updateDataDependentButtons);
-
-        } catch (IOException ioEx) {
-            Log.e(TAG, "IO error in pollOnce(): " + ioEx.getMessage(), ioEx);
-            if (!isReconnecting && started) {
-                // Remove frequent IO error toast - just log and reconnect silently
-                Log.w(TAG, "IO error during polling, attempting reconnection");
-                reconnectBluetooth();
-            }
-        } catch (InterruptedException intEx) {
-            Log.w(TAG, "pollOnce() interrupted", intEx);
-            Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            Log.e(TAG, "Unexpected error in pollOnce(): " + e.getMessage(), e);
-            errorCount++;
-            if (errorCount >= MAX_ERRORS && !isReconnecting && started) {
-                // Remove frequent error toast - just log and reconnect silently
-                Log.w(TAG, "Multiple unexpected errors, attempting reconnection");
-                reconnectBluetooth();
-                errorCount = 0;
-            }
-        }
-    }
+    // FinalConnectThread removed — BLE uses BluetoothManager.connect() instead.
+    // pollOnce() removed — BLE uses the bleCallback.onOpticalData() state machine instead.
 
     // Helper method to save current progress
     private void saveCurrentProgress() {
@@ -2148,120 +2015,44 @@ public class OutputBluetooth extends AppCompatActivity {
             Log.e(TAG, "Error saving backup: " + e.getMessage(), e);
         }
     }
+    /** Kept for compatibility with onStop/onDestroy calls; delegates to stopMeasurementCycle(). */
     private void shutdownScheduler() {
-        if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdownNow();
-            scheduler = null;
-        }
+        stopMeasurementCycle();
     }
 
+    /** BLE reconnection — re-invoke connect() on the singleton manager. */
     private void reconnectBluetooth() {
         synchronized (connectionLock) {
-            // Prevent multiple reconnection attempts
-            if (isReconnecting || isConnecting) {
-                Log.w(TAG, "Reconnection already in progress, skipping");
-                return;
-            }
-
+            if (isReconnecting || isConnecting) return;
             isReconnecting = true;
             connectionEstablished = false;
         }
-
-        Log.i(TAG, "Starting Bluetooth reconnection...");
-        shutdownScheduler();
-
-        // Close existing connection in background thread
-        new Thread(() -> {
-            try {
-                if (mySocket != null) {
-                    mySocket.close();
-                    mySocket = null;
-                }
-                is = null;
-                os = null;
-
-                // Wait before attempting reconnection
-                Thread.sleep(2000);
-
-                runOnUiThread(() -> {
-                    synchronized (connectionLock) {
-                        isReconnecting = false;
-                        isConnecting = false;
-                    }
-
-                    // Only attempt reconnection if we're still supposed to be started
-                    if (started) {
-                        initializeBluetooth();
-                    }
-                });
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error in reconnectBluetooth", e);
-                runOnUiThread(() -> {
-                    synchronized (connectionLock) {
-                        isReconnecting = false;
-                        isConnecting = false;
-                    }
-                    Toast.makeText(OutputBluetooth.this,
-                            "Reconnection failed. Please try manually.", Toast.LENGTH_SHORT).show();
-                });
-            }
-        }).start();
-    }
-
-    //————————————————————————————
-    // Packet buffering & parsing
-    //————————————————————————————
-
-    private void processBufferedData() {
-        String bufferStr = dataBuffer.toString();
-
-        // keep pulling complete packets   #…..p
-        int startIdx, endIdx;
-        while ((endIdx = bufferStr.indexOf('p')) >= 0) {
-            startIdx = bufferStr.lastIndexOf('#', endIdx);
-            if (startIdx < 0) startIdx = 0;
-
-            String pkt = bufferStr.substring(startIdx, endIdx + 1);
-            processBluetoothData(pkt);
-
-            // trim processed part
-            bufferStr = (endIdx + 1 < bufferStr.length())
-                    ? bufferStr.substring(endIdx + 1)
-                    : "";
-        }
-        dataBuffer = new StringBuilder(bufferStr);       // keep remainder
-
-        if (dataBuffer.length() > 1024) {                // emergency drain
-            Log.w(TAG, "Data buffer overflow, resetting");
-            dataBuffer.setLength(0);
+        Log.i(TAG, "BLE reconnect triggered");
+        stopMeasurementCycle();
+        if (bleManager != null && deviceAddress != null && !deviceAddress.isEmpty()) {
+            bleManager.setCallback(bleCallback);
+            bleManager.connect(deviceAddress);
+        } else {
+            isReconnecting = false;
+            runOnUiThread(() ->
+                    Toast.makeText(this, "Reconnection failed — no device address", Toast.LENGTH_SHORT).show());
         }
     }
 
-    private void processBluetoothData(String packet) {
+    //————————————————————————————
+    // BLE signal processing
+    //————————————————————————————
+
+    /**
+     * Called by bleCallback.onOpticalData() with pre-computed voltages from the
+     * 13-byte BLE optical packet.  Contains all cortisol calculation, UI update,
+     * graph feeding, and developer mode data logic.
+     */
+    private void processSignalValues(double val0, double val1, double val2) {
         try {
-            // strip markers
-            if (packet.startsWith("#")) packet = packet.substring(1);
-            if (packet.endsWith("p")) packet = packet.substring(0, packet.length() - 1);
-
-            StringTokenizer tokens = new StringTokenizer(packet, ":");
-            if (tokens.countTokens() != 3) return;
-
-            // parse & mask off whatever prefix you used
-            int raw0 = Integer.parseInt(tokens.nextToken()) % 100000;
-            int raw1 = Integer.parseInt(tokens.nextToken()) % 100000;
-            int raw2 = Integer.parseInt(tokens.nextToken()) % 100000;
-
-            double val0 = raw0 * analogRef / (Math.pow(2, ADCbits) - 1);
-            double val1 = raw1 * analogRef / (Math.pow(2, ADCbits) - 1);
-            double val2 = raw2 * analogRef / (Math.pow(2, ADCbits) - 1);
-
-
-
-            // update text
+            // update counters
             dataSize++;
             time += 1.0 / samplesPerSecond;
-            // Feed Developer Mode graph if open
 
             double yValue = val1 * 1000.0;
 
@@ -2284,17 +2075,15 @@ public class OutputBluetooth extends AppCompatActivity {
                                 " | validCount=" + validCortisolList.size());
             }
 
-            Log.d(TAG, "processBluetoothData called, devModeActive=" + devModeActive + " val1=" + val1 + " time=" + time);
+            Log.d(TAG, "processSignalValues called, devModeActive=" + devModeActive + " val1=" + val1 + " time=" + time);
 
             if (devModeActive) {
                 devModeXAxis.add(time);
                 devModeYAxis.add(val1);
-                double avg = dataPointsavgd.isEmpty() ? val1 : dataPointsavgd.get(dataPointsavgd.size() - 1);
-                devModeAvgY.add(avg);
+                double devAvg = dataPointsavgd.isEmpty() ? val1 : dataPointsavgd.get(dataPointsavgd.size() - 1);
+                devModeAvgY.add(devAvg);
                 Log.d(TAG, "DevMode fed: xSize=" + devModeXAxis.size() + " ySize=" + devModeYAxis.size());
             }
-
-
 
             // Calculate cortisol from last 100 samples (or all if less than 100)
             double currentCortisol = calculateFinalExperimentCortisol();
@@ -2303,6 +2092,11 @@ public class OutputBluetooth extends AppCompatActivity {
                     "Samples %d | %.2fs\n0: %.4f V\n1: %.4f V\n2: %.4f V\nCortisol: %.1f ng/mL",
                     dataSize, time, val0, val1, val2, currentCortisol));
 
+            // Update progress bar for regular users
+            int progressPct = (int) Math.min(100, (double) dataSize / MAX_SAMPLES * 100);
+            if (collectionProgressBar != null) collectionProgressBar.setProgress(progressPct);
+            if (tvProgressLabel != null)
+                tvProgressLabel.setText("Collecting data... " + progressPct + "%");
 
             // collect for plotting
             xaxis.add(time);
@@ -2330,7 +2124,7 @@ public class OutputBluetooth extends AppCompatActivity {
             runOnUiThread(this::checkSampleLimit);
 
         } catch (Exception e) {
-            Log.e(TAG, "Error in processBluetoothData", e);
+            Log.e(TAG, "Error in processSignalValues", e);
         }
     }
 
@@ -2743,18 +2537,25 @@ public class OutputBluetooth extends AppCompatActivity {
             sendTimer(false);
             started = false;
 
-            // mark that collection is complete and enable RESULTS
+            // Mark progress bar as complete
+            if (collectionProgressBar != null) collectionProgressBar.setProgress(100);
+            if (tvProgressLabel != null)
+                tvProgressLabel.setText("Collection complete!");
+
+            // Reveal the Results button now that collection is done
             if (showButton != null) {
+                showButton.setVisibility(View.VISIBLE);
                 showButton.setEnabled(true);
                 showButton.setAlpha(1.0f);
             }
+            if (tvResultsInstruction != null) tvResultsInstruction.setVisibility(View.VISIBLE);
 
             // Let the user know
             Toast.makeText(this,
-                    "Sample collection completed (" + dataSize + " samples). Tap RESULTS to view.",
+                    "Sample collection completed (" + dataSize + " samples). Tap Results to view.",
                     Toast.LENGTH_LONG).show();
 
-            // Optionally also update the info text card
+            // Update metrics text in dev mode
             if (textViewAppend != null) {
                 textViewAppend.setText(
                         "Data Length: " + dataSize +
@@ -2823,49 +2624,35 @@ public class OutputBluetooth extends AppCompatActivity {
             // Shutdown current collection
             shutdownScheduler();
 
-            // Close and reset connection in a separate thread
+            // BLE: disconnect, increment batch, then reconnect
             new Thread(() -> {
                 try {
-                    if (mySocket != null) {
-                        mySocket.close();
-                        mySocket = null;
-                    }
-                    is = null;
-                    os = null;
+                    runOnUiThread(() -> {
+                        if (bleManager != null) bleManager.disconnect();
+                    });
 
-                    // Wait before reconnection
+                    // Wait for GATT to close cleanly
                     Thread.sleep(1000);
 
-                    // Start fresh connection
                     runOnUiThread(() -> {
-                        // Increment batch counter
                         currentBatch++;
-
-                        // ✅ FIXED: Set connection state properly
                         synchronized (connectionLock) {
                             isConnecting = true;
                             connectionEstablished = false;
                         }
-
-                        // Start with fresh connection
-                        new ConnectThread(myDevice).start();
-
-                        // ❌ REMOVE THIS - Let ConnectThread handle timer restart
-                        // The ConnectThread will automatically start the timer in notifyConnectionSuccess()
-                        // new Handler().postDelayed(() -> {
-                        //     sendTimer(true);
-                        // }, 2000);
+                        if (bleManager != null && deviceAddress != null && !deviceAddress.isEmpty()) {
+                            bleManager.connect(deviceAddress);
+                        } else {
+                            isConnecting = false;
+                        }
                     });
                 } catch (Exception e) {
                     Log.e(TAG, "Error during batch transition", e);
-
-                    // ✅ ADDED: Reset connection state on error
                     runOnUiThread(() -> {
                         synchronized (connectionLock) {
                             isConnecting = false;
                             connectionEstablished = false;
                         }
-
                         Toast.makeText(OutputBluetooth.this,
                                 "Batch transition failed. Please reconnect manually.",
                                 Toast.LENGTH_LONG).show();
@@ -2875,331 +2662,13 @@ public class OutputBluetooth extends AppCompatActivity {
         }
     }
 
-    // Inner class for connecting to HC-05, with fallback and improved error handling
-    private class ConnectThread extends Thread {
-        private final UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
-        private final BluetoothDevice device;
-        private static final int MAX_RETRY_ATTEMPTS = 3;
-        private static final long RETRY_DELAY_MS = 2000;
-        private static final long CONNECTION_TIMEOUT_MS = 15000;
-
-        ConnectThread(BluetoothDevice device) {
-            this.device = device;
-        }
-
-        @Override
-        public void run() {
-            boolean connectionSuccessful = false;
-
-            // Ensure we're in connecting state
-            synchronized (connectionLock) {
-                if (!isConnecting) {
-                    Log.w(TAG, "Connection attempt cancelled - not in connecting state");
-                    return;
-                }
-            }
-
-            for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS && !connectionSuccessful; attempt++) {
-                // Check if we should still be connecting
-                synchronized (connectionLock) {
-                    if (!isConnecting) {
-                        Log.i(TAG, "Connection attempt cancelled during retry " + attempt);
-                        return;
-                    }
-                }
-
-                Log.i(TAG, "Connection attempt " + attempt + "/" + MAX_RETRY_ATTEMPTS);
-
-                try {
-                    // Ensure Bluetooth is enabled and ready
-                    if (!ensureBluetoothReady()) {
-                        Log.e(TAG, "Bluetooth not ready for connection");
-                        continue;
-                    }
-
-                    // Cancel any ongoing discovery to free up resources
-                    if (mBA.isDiscovering()) {
-                        mBA.cancelDiscovery();
-                        Thread.sleep(1000); // Wait for discovery to stop
-                    }
-
-                    // Close any existing socket
-                    closeExistingSocket();
-
-                    // Wait between attempts (except first attempt)
-                    if (attempt > 1) {
-                        Log.i(TAG, "Waiting " + RETRY_DELAY_MS + "ms before retry...");
-                        Thread.sleep(RETRY_DELAY_MS);
-                    }
-
-                    // Try standard SPP connection first
-                    connectionSuccessful = attemptStandardConnection();
-
-                    if (!connectionSuccessful) {
-                        // Try fallback connection method
-                        connectionSuccessful = attemptFallbackConnection();
-                    }
-
-                    if (connectionSuccessful) {
-                        // Initialize streams and test connection
-                        if (initializeStreamsAndTest()) {
-                            Log.i(TAG, "Connection successful on attempt " + attempt);
-                            notifyConnectionSuccess();
-                            return;
-                        } else {
-                            connectionSuccessful = false;
-                            closeExistingSocket();
-                        }
-                    }
-
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Connection thread interrupted", e);
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    Log.e(TAG, "Unexpected error in connection attempt " + attempt, e);
-                    closeExistingSocket();
-                }
-            }
-
-            // All attempts failed - reset connection state
-            synchronized (connectionLock) {
-                isConnecting = false;
-                connectionEstablished = false;
-            }
-
-            Log.e(TAG, "All connection attempts failed");
-//            runOnUiThread(() -> {
-//                onBluetoothConnected();
-//                Toast.makeText(OutputBluetooth.this,
-//                        "Connection failed after " + MAX_RETRY_ATTEMPTS + " attempts. Please check device and try again.",
-//                        Toast.LENGTH_LONG).show();
-//
-//                // Reset UI state
-//                startButton.setEnabled(true);
-////
-//                connectButton.setEnabled(true);
-////                settingsButton.setEnabled(true);
-//            });
-            runOnUiThread(() -> {
-                Toast.makeText(OutputBluetooth.this,
-                        "Connection failed after " + MAX_RETRY_ATTEMPTS + " attempts. Please check device and try again.",
-                        Toast.LENGTH_LONG).show();
-            });
-
-        }
-
-        private boolean ensureBluetoothReady() {
-            try {
-                if (mBA == null || !mBA.isEnabled()) {
-                    Log.e(TAG, "Bluetooth adapter not available or not enabled");
-                    return false;
-                }
-
-                // Check permissions for Android 12+
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (ContextCompat.checkSelfPermission(OutputBluetooth.this,
-                            Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                        Log.e(TAG, "BLUETOOTH_CONNECT permission not granted");
-                        return false;
-                    }
-                }
-
-                return true;
-            } catch (SecurityException e) {
-                Log.e(TAG, "Security exception checking Bluetooth state", e);
-                return false;
-            }
-        }
-
-        private void closeExistingSocket() {
-            if (mySocket != null) {
-                try {
-                    mySocket.close();
-                    Log.d(TAG, "Existing socket closed");
-                } catch (IOException e) {
-                    Log.w(TAG, "Error closing existing socket", e);
-                }
-                mySocket = null;
-            }
-        }
-
-        private boolean attemptStandardConnection() {
-            try {
-                Log.d(TAG, "Attempting standard RFCOMM connection...");
-
-                // Add a delay before connection attempt to stabilize
-                Thread.sleep(1000);
-
-                // Create the socket
-                mySocket = device.createRfcommSocketToServiceRecord(uuid);
-
-                // Set connection timeout if possible (on some Android versions)
-                try {
-                    // Use reflection to set socket timeout property
-                    Method m = mySocket.getClass().getMethod("setConnectionTimeout", int.class);
-                    m.invoke(mySocket, 15000); // 15 seconds timeout
-                    Log.d(TAG, "Connection timeout set to 15 seconds");
-                } catch (Exception e) {
-                    // Method not available, continue without setting timeout
-                    Log.d(TAG, "Could not set connection timeout: " + e.getMessage());
-                }
-
-                // Try connecting with improved error handling
-                try {
-                    // Cancel discovery to avoid interference
-                    if (mBA.isDiscovering()) {
-                        mBA.cancelDiscovery();
-                        Thread.sleep(500);
-                    }
-
-                    // Actual connection
-                    mySocket.connect();
-                    Log.d(TAG, "Standard connection successful");
-                    return true;
-                } catch (IOException e) {
-                    String errorMsg = e.getMessage();
-                    Log.w(TAG, "Standard connection failed: " + errorMsg);
-
-                    // More detailed error logging
-                    if (errorMsg != null && errorMsg.contains("timeout")) {
-                        Log.e(TAG, "Connection timed out - device may be out of range or powered off");
-                    } else if (errorMsg != null && errorMsg.contains("closed")) {
-                        Log.e(TAG, "Socket was closed during connection");
-                    }
-
-                    closeExistingSocket();
-                    return false;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error in standard connection attempt: " + e.getClass().getName() + ": " + e.getMessage());
-                closeExistingSocket();
-                return false;
-            }
-        }
-
-        private boolean attemptFallbackConnection() {
-            try {
-                Log.d(TAG, "Attempting fallback connection via reflection...");
-
-                // Use reflection to create socket with channel 1
-                Method fallbackMethod = device.getClass().getMethod("createRfcommSocket", int.class);
-                mySocket = (BluetoothSocket) fallbackMethod.invoke(device, 1);
-
-                if (mySocket != null) {
-                    mySocket.connect();
-                    Log.d(TAG, "Fallback connection successful");
-                    return true;
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Fallback connection failed: " + e.getMessage());
-                closeExistingSocket();
-            }
-            return false;
-        }
-
-        private boolean initializeStreamsAndTest() {
-            try {
-                Log.d(TAG, "Initializing input/output streams...");
-
-                // Get streams
-                is = mySocket.getInputStream();
-                os = mySocket.getOutputStream();
-
-                if (is == null || os == null) {
-                    Log.e(TAG, "Failed to get input/output streams");
-                    return false;
-                }
-
-                // Test the connection by sending a simple command
-                Log.d(TAG, "Testing connection with ping command...");
-                os.write("R\r".getBytes()); // Reset command
-                os.flush();
-
-                // Wait a bit and clear any response
-                Thread.sleep(500);
-                while (is.available() > 0) {
-                    is.skip(is.available());
-                }
-
-                Log.d(TAG, "Connection test successful");
-                return true;
-
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to initialize streams or test connection", e);
-                return false;
-            }
-        }
-
-
-        private void notifyConnectionSuccess() {
-            runOnUiThread(() -> {
-                try {
-                    String deviceName = device.getName();
-                    if (deviceName == null) deviceName = "Unknown Device";
-
-                    Toast.makeText(OutputBluetooth.this,
-                            "Connected to " + deviceName, Toast.LENGTH_SHORT).show();
-
-                    // Set connection state flags
-                    synchronized (connectionLock) {
-                        isConnecting = false;
-                        connectionEstablished = true;
-                    }
-
-                    // Update info card with "Device connected: <name>"
-                    onBluetoothConnected();
-
-                    // CHECK: If this is a batch transition and data collection was active
-                    boolean shouldResumeCollection = started && currentBatch > 1;
-
-                    if (shouldResumeCollection) {
-                        // BATCH TRANSITION: Automatically resume data collection
-                        Log.i(TAG, "Batch transition complete - resuming data collection");
-
-                        // Update UI for resumed collection
-                        if (startButton != null) startButton.setEnabled(false);
-                        if (connectButton != null) connectButton.setEnabled(false);
-                        if (showButton != null) showButton.setEnabled(false);
-
-                        // Restart data collection
-                        sendTimer(true);
-
-                        Toast.makeText(OutputBluetooth.this,
-                                "Batch " + currentBatch + " resumed", Toast.LENGTH_SHORT).show();
-                    } else {
-                        // NORMAL CONNECTION: Update UI for connected but not started
-                        if (startButton != null)
-                            startButton.setEnabled(true);   // Enable start button
-                        if (connectButton != null) connectButton.setEnabled(true);
-                        if (showButton != null) showButton.setEnabled(dataSize > 0);
-
-                        Log.i(TAG, "Connection established. Ready for data collection.");
-                    }
-
-                    // Reset reconnection flags
-                    OutputBluetooth.this.reconnecting = false;
-                    isReconnecting = false;
-                    errorCount = 0;
-
-                } catch (SecurityException e) {
-                    Log.e(TAG, "Security exception in success notification", e);
-                    // Reset connection state on error
-                    synchronized (connectionLock) {
-                        isConnecting = false;
-                        connectionEstablished = false;
-                    }
-                }
-            });
-        }
-
-    }
     private void onBluetoothConnected() {
         connectionEstablished = true;
 
-        String deviceName = (myDevice != null && myDevice.getName() != null)
-                ? myDevice.getName()
-                : "Unknown device";
+        String deviceName = (deviceAddress != null && !deviceAddress.isEmpty())
+                ? "Optical_Detector_1 (" + deviceAddress + ")"
+                : "Optical_Detector_1";
+        devConnectedDeviceName = deviceName;
 
         if (textViewAppend != null) {
             textViewAppend.setText(
@@ -3242,10 +2711,9 @@ public class OutputBluetooth extends AppCompatActivity {
 
 
 
-    // Helper method to check if we have a valid Bluetooth connection
+    // Helper method to check if we have a valid BLE connection
     private boolean hasValidConnection() {
-        return connectionEstablished && mySocket != null && mySocket.isConnected() &&
-                os != null && is != null;
+        return connectionEstablished && bleManager != null && bleManager.isConnected();
     }
 
     // Helper method to log current button states for debugging
@@ -3284,8 +2752,7 @@ public class OutputBluetooth extends AppCompatActivity {
         if (saveButton != null) {
             saveButton.setEnabled(hasData);
         }
-        if (showButton != null) {
-            showButton.setEnabled(hasData);
-        }
+        // showButton visibility is controlled exclusively by checkSampleLimit()
+        // — do not change it here.
     }
 }

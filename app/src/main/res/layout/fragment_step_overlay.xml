@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white"
@@ -11,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="16dp"
         android:gravity="center_horizontal"
         android:clickable="true"
         android:focusable="true">
@@ -21,9 +22,9 @@
             android:id="@+id/tvStepLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="@color/colorPrimary"
+            android:textColor="@color/primary"
             android:letterSpacing="0.1"
             android:layout_marginBottom="16dp" />
 
@@ -40,10 +41,10 @@
             android:id="@+id/tvStepTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="#1A1A1A"
-            android:gravity="center"
+            android:textColor="@color/text_primary"
+
             android:layout_marginBottom="10dp" />
 
         <!-- Step description -->
@@ -51,10 +52,10 @@
             android:id="@+id/tvStepDescription"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:textColor="#555555"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
             android:gravity="center"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="16dp" />
 
         <!-- Bullet points (storage step) -->
         <TextView
@@ -62,10 +63,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="14sp"
-            android:textColor="#555555"
+            android:textColor="@color/text_secondary"
             android:gravity="start"
             android:visibility="gone"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="16dp" />
 
         <!-- Timer (Card 1 & 5) -->
         <TextView
@@ -74,30 +75,29 @@
             android:layout_height="wrap_content"
             android:textSize="48sp"
             android:textStyle="bold"
-            android:textColor="@color/colorPrimary"
+            android:textColor="@color/primary"
             android:visibility="gone"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="16dp" />
 
         <!-- Motivational message (Card 1 only) -->
         <TextView
             android:id="@+id/tvMotivation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="15sp"
-            android:textColor="#888888"
-            android:fontFamily="sans-serif-italic"
+            android:textSize="14sp"
+            android:textColor="@color/text_hint"
             android:gravity="center"
             android:visibility="gone"
             android:layout_marginBottom="16dp" />
 
         <!-- Start Timer button (Steps 1 & 5 only) -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStartTimer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Start Timer"
             android:visibility="gone"
-            android:backgroundTint="@color/colorPrimary"
+            android:backgroundTint="@color/primary"
             android:textColor="@color/white"
             android:layout_marginBottom="16dp" />
 
@@ -110,35 +110,35 @@
             android:layout_marginTop="0dp">
 
             <!-- Skip button (Card 1 & 5 only) -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSkip"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Skip"
                 android:visibility="gone"
-                android:backgroundTint="#CCCCCC"
+                android:backgroundTint="@color/primary"
                 android:layout_marginEnd="8dp" />
 
             <!-- Store It button (Card 3 only) -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStoreIt"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Store It"
                 android:visibility="gone"
-                android:backgroundTint="#CCCCCC"
+                android:backgroundTint="@color/primary"
                 android:layout_marginEnd="8dp" />
 
             <!-- Primary action button: Next / Perform Test Now / Begin Scan -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNext"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Next"
-                android:backgroundTint="@color/colorPrimary"
+                android:backgroundTint="@color/primary"
                 android:textColor="@color/white" />
 
         </LinearLayout>

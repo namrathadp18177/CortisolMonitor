@@ -15,7 +15,19 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        
+
+        // ── One-time email normalisation / deduplication ──────────────────────
+        // Must run before any login or data access so that existing DB rows that
+        // were stored with mixed-case emails (e.g. "John@gmail.com" vs
+        // "john@gmail.com") are merged into a single lowercase record.
+        // Both methods are idempotent — safe to call on every launch.
+        try {
+            UserDatabaseHelper.getInstance(this).normalizeAndDeduplicateEmails();
+            DatabaseHelper.getInstance(this).normalizeEmailsToLowercase();
+        } catch (Exception e) {
+            Log.e(TAG, "Email normalisation on startup failed: " + e.getMessage(), e);
+        }
+
         // Initialize Kommunicate SDK at application level
         initializeKommunicate();
     }

@@ -6,7 +6,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorBackground"
+    android:background="@color/background"
     tools:context=".BiomarkerActivty">
 
     <!-- Toolbar -->
@@ -14,25 +14,30 @@
         android:id="@+id/toolbar"
         android:layout_width="0dp"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/colorPrimary"
+        android:background="@color/primary"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:title="Prepare Test Kit"
-        app:titleTextColor="@android:color/white"
+        app:titleTextColor="@color/white"
+        app:logoDescription="Cortisol Monitor"
+        app:navigationIcon="?attr/homeAsUpIndicator"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Step Progress Indicator -->
+    <!-- Step Progress -->
     <LinearLayout
         android:id="@+id/stepIndicator"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="10dp"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Step Numbers -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -44,45 +49,50 @@
                 android:layout_height="wrap_content"
                 android:text="Prepare"
                 android:textStyle="bold"
-                android:textColor="@color/colorPrimary"
-                android:textSize="14sp"/>
+                android:textColor="@color/primary"
+                android:textSize="14sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="   →   "
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Collect"
-                android:textColor="#777777"
-                android:textSize="14sp"/>
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="   →   "
-                android:textSize="14sp"/>
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Analyze"
-                android:textColor="#777777"
-                android:textSize="14sp"/>
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
 
         </LinearLayout>
 
-
     </LinearLayout>
 
-    <!-- Scroll Content -->
+    <!-- Scrollable Content -->
     <ScrollView
+        android:id="@+id/scrollContent"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:fillViewport="true"
+        android:overScrollMode="never"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
         app:layout_constraintTop_toBottomOf="@id/stepIndicator"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -92,52 +102,66 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="32dp">
 
             <!-- Title -->
             <TextView
-                android:layout_width="wrap_content"
+                android:id="@+id/tvMainTitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Before You Begin"
                 android:textStyle="bold"
-                android:textSize="24sp"
-                android:textColor="@color/colorPrimary"
-                android:layout_gravity="center"
-                android:layout_marginBottom="4dp"/>
+                android:textSize="22sp"
+                android:textColor="@color/primary"
+                android:gravity="center"
+                android:layout_marginBottom="6dp" />
 
             <!-- Subtitle -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Prepare Your Test Kit"
-                android:textSize="16sp"
-                android:textColor="#666666"
-                android:layout_gravity="center"
-                android:layout_marginBottom="24dp"/>
-
-            <!-- Instruction Card -->
-            <androidx.cardview.widget.CardView
+                android:id="@+id/tvSubtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                android:layout_marginBottom="20dp">
+                android:text="Prepare Your Test Kit"
+                android:textSize="15sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Intro Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="18dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/white"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Ensure all required components from your cortisol test kit are available before starting the procedure."
-                    android:textSize="14sp"
-                    android:textColor="#555555"
-                    android:padding="16dp"/>
-            </androidx.cardview.widget.CardView>
+                    android:textSize="15sp"
+                    android:textColor="@color/text_secondary"
+                    android:lineSpacingExtra="3dp"
+                    android:padding="20dp" />
+
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Checklist Card -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/white"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -146,68 +170,72 @@
                     android:padding="20dp">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="✓ Saliva collection swab"
                         android:textSize="15sp"
-                        android:textColor="#444444"
-                        android:layout_marginBottom="8dp"/>
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="18dp" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="✓ Collection tube"
                         android:textSize="15sp"
-                        android:textColor="#444444"
-                        android:layout_marginBottom="8dp"/>
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="18dp" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="✓ Extraction tube"
                         android:textSize="15sp"
-                        android:textColor="#444444"
-                        android:layout_marginBottom="8dp"/>
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="18dp" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="✓ Test strip cartridge"
                         android:textSize="15sp"
-                        android:textColor="#444444"
-                        android:layout_marginBottom="8dp"/>
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="18dp" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="✓ Portable analyzer device"
                         android:textSize="15sp"
-                        android:textColor="#444444"/>
+                        android:textColor="@color/text_primary" />
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Next Instruction -->
             <TextView
+                android:id="@+id/tvNextInstruction"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Next: Scan the QR code on your collection tube to begin the test."
-                android:textSize="14sp"
-                android:textColor="@color/colorPrimary"
+                android:textSize="15sp"
+                android:textColor="@color/primary"
                 android:textStyle="bold"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="20dp"/>
+                android:lineSpacingExtra="2dp"
+                android:layout_marginBottom="20dp" />
 
-            <!-- Button -->
-            <Button
+            <!-- CTA Button -->
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnConnectBluetooth"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
+                android:layout_marginBottom="12dp"
                 android:text="Proceed to Scan"
-                android:textColor="@android:color/white"
-                android:textSize="16sp"
-                android:backgroundTint="@color/colorPrimary"/>
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                app:cornerRadius="18dp"
+                android:backgroundTint="@color/primary" />
 
         </LinearLayout>
 

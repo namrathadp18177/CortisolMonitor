@@ -27,48 +27,50 @@ public class BiomarkerInstructions extends AppCompatActivity {
         // Set up toolbar with back button
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
-            getSupportActionBar().setDisplayShowTitleEnabled(false);  // Hide title
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
-        // Set up the "Start Test" button to navigate to biomarker activity
+        // Make the back arrow pure black
+        if (toolbar.getNavigationIcon() != null) {
+            toolbar.getNavigationIcon().setTint(
+                    ContextCompat.getColor(this, android.R.color.white)
+            );
+        }
+
+        // Set up the Start Test button to navigate to biomarker activity
         Button startTestButton = findViewById(R.id.btn_start_test);
         startTestButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(BiomarkerInstructions.this, BiomarkerActivty.class);
 
-                // Role and email coming into this screen
                 String userRole = getIntent().getStringExtra("user_role");
                 String userEmail = getIntent().getStringExtra("user_email");
-                int startStep    = getIntent().getIntExtra("start_step", 0);
-                android.util.Log.d("STEP_DEBUG", "BiomarkerInstructions received start_step: " + startStep);
+                int startStep = getIntent().getIntExtra("start_step", 0);
 
+                android.util.Log.d("STEP_DEBUG", "BiomarkerInstructions received start_step: " + startStep);
 
                 intent.putExtra("user_role", userRole);
                 intent.putExtra("start_step", startStep);
 
                 if ("CARE_PROVIDER".equals(userRole)) {
-                    // In care provider mode, user_email here should be the PATIENT email
                     intent.putExtra("patient_email", userEmail);
                 } else {
-                    // In patient mode, forward their own email (optional, BiomarkerActivty
-                    // also knows how to get the logged-in patient email)
                     intent.putExtra("user_email", userEmail);
                 }
 
                 startActivity(intent);
             }
         });
-
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            // Handle back button press
             onBackPressed();
             return true;
         }

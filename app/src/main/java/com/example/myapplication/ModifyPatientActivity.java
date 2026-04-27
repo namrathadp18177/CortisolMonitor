@@ -7,6 +7,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,12 +31,27 @@ public class ModifyPatientActivity extends AppCompatActivity {
         currentCpEmail = UserDatabaseHelper.getCurrentUserEmail();
         providerMedicalId = dbHelper.getCareProviderMedicalId(currentCpEmail);
 
+        // Set up toolbar with back navigation
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            setSupportActionBar(toolbar);
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            }
+        }
+
         rvPatients = findViewById(R.id.rvPatients);
 
         adapter = new PatientCardAdapter(patients, info -> showPatientOptionsDialog(info));
         rvPatients.setAdapter(adapter);
 
         loadPatients();
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        finish();
+        return true;
     }
 
     @Override

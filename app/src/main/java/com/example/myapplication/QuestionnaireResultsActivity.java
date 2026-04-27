@@ -3,12 +3,15 @@ package com.example.myapplication;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.android.material.card.MaterialCardView;
+import java.util.Locale;
 
 public class QuestionnaireResultsActivity extends AppCompatActivity {
 
@@ -176,9 +179,31 @@ public class QuestionnaireResultsActivity extends AppCompatActivity {
 
     private void displayResults() {
         DatabaseHelper dbHelper = DatabaseHelper.getInstance(this);
-        QuestionnaireSummary summary = dbHelper.getQuestionnaireSummary(DatabaseHelper.getCurrentUserEmail());
+        String email = DatabaseHelper.getCurrentUserEmail();
+        QuestionnaireSummary summary = dbHelper.getQuestionnaireSummary(email);
 
         if (summary == null) return;
+
+        // Save latest assessment scores to SharedPreferences so IntegratedResultsActivity
+        // can load them even when not passed directly via Intent.
+        if (email != null && !email.isEmpty()) {
+            long now = System.currentTimeMillis();
+
+            android.content.SharedPreferences.Editor editor =
+                    getSharedPreferences("AssessmentResults", MODE_PRIVATE).edit();
+            editor.putInt("phq_" + email + "_latest", summary.getPhq9Score());
+            editor.putFloat("resilience_" + email + "_latest", (float) summary.getBrsScore());
+            editor.putInt("screener_total_" + email + "_latest", summary.getTotalScore());
+            editor.putLong("assessment_date_" + email + "_latest", now);
+            editor.apply();
+
+            // Also write a dated entry directly into IntegratedResults so Combined Results
+            // updates immediately after every assessment (biomarker data added later when taken).
+            saveAssessmentToIntegratedResults(email, summary, now);
+        }
+
+        // ── Stress level summary card (shown before the detailed scores) ────────
+        addStressLevelCard(summary);
 
         // Display Mental Health Screener results
         addSectionTitle(getString(R.string.mental_health_screener_results));
@@ -233,6 +258,172 @@ public class QuestionnaireResultsActivity extends AppCompatActivity {
         finalInstruction.setTypeface(null, android.graphics.Typeface.BOLD);
         finalInstruction.setPadding(16, 24, 16, 24);
         resultsContainer.addView(finalInstruction);
+    }
+
+    /**
+     * Builds and inserts a MaterialCardView at the very top of resultsContainer (index 0)
+     * showing the overall stress classification derived from the PHQ-9, BRS, and screener scores.
+     * Uses the same weight thresholds as saveAssessmentToIntegratedResults().
+     */
+    private void addStressLevelCard(QuestionnaireSummary summary) {
+        // Helper to convert dp → pixels
+        float density = getResources().getDisplayMetrics().density;
+
+        int   phqScore  = summary.isPhq9Filled() ? summary.getPhq9Score() : 0;
+        int   bdiScore  = summary.isBdiFilled()  ? summary.getBdiScore()  : 0;
+        int   gad7Score = summary.isGad7Filled() ? summary.getGad7Score() : 0;
+        // BRS: if not taken, use training-set mean (3.27) so the model gets a neutral signal
+        float brsScore  = summary.isBrsFilled()
+                ? (float) summary.getBrsScore()
+                : 3.2715f;
+
+        // ── User demographics from profile ─────────────────────────────────────
+        String email = DatabaseHelper.getCurrentUserEmail();
+        UserDatabaseHelper udb = UserDatabaseHelper.getInstance(this);
+        int ageYears = udb.getUserAge(email);
+        boolean isMale = false;
+        try {
+            UserData ud = udb.getUserData(email);
+            if (ud != null && ud.getSex() != null) {
+                String s = ud.getSex().trim().toLowerCase();
+                isMale = s.startsWith("m");   // "male", "m", "man" → 1
+            }
+        } catch (Exception ignored) {}
+
+        // ── Run ONNX model ────────────────────────────────────────────────────
+        StressPredictor.Result prediction = StressPredictor.predictAssessmentOnly(
+                this, phqScore, bdiScore, gad7Score, brsScore, ageYears, isMale);
+
+        // ── Map predicted class → display values ──────────────────────────────
+        String level, description;
+        int    cardColor;
+        if (prediction == null) {
+            // Absolute fallback if model fails entirely
+            level       = "Unable to assess";
+            description = "Please complete more questionnaires for a full assessment.";
+            cardColor   = android.graphics.Color.parseColor("#757575");
+        } else {
+            switch (prediction.predictedClass) {
+                case StressPredictor.CLASS_HEALTHY:
+                    level       = "Low Stress";
+                    description = "Your scores suggest low stress levels. Keep up your current wellness habits.";
+                    cardColor   = android.graphics.Color.parseColor("#2E7D32");
+                    break;
+                case StressPredictor.CLASS_MODERATE:
+                    level       = "Medium Stress";
+                    description = "Medium stress detected. Regular self-care and mindfulness can help.";
+                    cardColor   = android.graphics.Color.parseColor("#E65100");
+                    break;
+                case StressPredictor.CLASS_HIGH:
+                    level       = "High Stress";
+                    description = "Significant stress indicators. Speaking with a healthcare professional is recommended.";
+                    cardColor   = android.graphics.Color.parseColor("#B71C1C");
+                    break;
+                default:
+                    level       = "Low Stress";
+                    description = "Your scores suggest low stress levels. Keep up your current wellness habits.";
+                    cardColor   = android.graphics.Color.parseColor("#2E7D32");
+            }
+        }
+
+        Log.d(TAG, "addStressLevelCard: level=" + level
+                + (prediction != null ? ", confidence=" + prediction.getConfidencePct() + "%" : ", model=null"));
+
+        // Persist stress level keyed by sessionId so history screens can display it
+        String sessionIdForSave = getIntent().getStringExtra("session_id");
+        if (sessionIdForSave != null && !sessionIdForSave.isEmpty()) {
+            getSharedPreferences("SessionStressResults", MODE_PRIVATE)
+                    .edit()
+                    .putString(sessionIdForSave, level)
+                    .apply();
+
+            // Also persist the score breakdown so SessionDetailActivity can show it
+            StringBuilder scoreDetail = new StringBuilder("Screener: ").append(summary.getTotalScore());
+            if (summary.isPhq9Filled())  scoreDetail.append("  •  PHQ-9: ").append(phqScore);
+            if (summary.isGad7Filled())  scoreDetail.append("  •  GAD-7: ").append(gad7Score);
+            if (summary.isBrsFilled())   scoreDetail.append("  •  BRS: ").append(
+                    String.format(Locale.getDefault(), "%.1f", brsScore));
+            getSharedPreferences("SessionScoreDetails", MODE_PRIVATE)
+                    .edit()
+                    .putString(sessionIdForSave, scoreDetail.toString())
+                    .apply();
+        }
+
+        // ── Outer MaterialCardView ────────────────────────────────────────────
+        MaterialCardView card = new MaterialCardView(this);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        int marginPx = (int)(12 * density);
+        cardParams.setMargins(0, 0, 0, marginPx);
+        card.setLayoutParams(cardParams);
+        card.setRadius(12 * density);
+        card.setCardElevation(4 * density);
+        card.setCardBackgroundColor(cardColor);
+        card.setUseCompatPadding(true);
+
+        // ── Inner LinearLayout (content) ─────────────────────────────────────
+        LinearLayout inner = new LinearLayout(this);
+        inner.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int)(20 * density);
+        inner.setPadding(pad, pad, pad, pad);
+
+        // "YOUR STRESS LEVEL" label
+        TextView tvLabel = new TextView(this);
+        tvLabel.setText("YOUR STRESS LEVEL");
+        tvLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+        tvLabel.setTextColor(android.graphics.Color.argb(200, 255, 255, 255));
+        tvLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvLabel.setLetterSpacing(0.12f);
+        inner.addView(tvLabel);
+
+        // Big level name + confidence
+        TextView tvLevel = new TextView(this);
+        tvLevel.setText(level);
+        tvLevel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f);
+        tvLevel.setTypeface(null, android.graphics.Typeface.BOLD);
+        tvLevel.setTextColor(android.graphics.Color.WHITE);
+        LinearLayout.LayoutParams levelParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        levelParams.setMargins(0, (int)(4*density), 0, (int)(8*density));
+        tvLevel.setLayoutParams(levelParams);
+        inner.addView(tvLevel);
+
+        // Score detail line
+        TextView tvScoreDetail = new TextView(this);
+        StringBuilder scoreBuilder = new StringBuilder();
+        if (summary.isPhq9Filled()) {
+            scoreBuilder.append("PHQ-9: ").append(phqScore).append("  •  ");
+        }
+        if (summary.isGad7Filled()) {
+            scoreBuilder.append("GAD-7: ").append(gad7Score).append("  •  ");
+        }
+        if (summary.isBrsFilled()) {
+            scoreBuilder.append(String.format("BRS: %.1f  •  ", brsScore));
+        }
+        scoreBuilder.append("Screener: ").append(summary.getTotalScore());
+        tvScoreDetail.setText(scoreBuilder.toString());
+        tvScoreDetail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        tvScoreDetail.setTextColor(android.graphics.Color.argb(210, 255, 255, 255));
+        LinearLayout.LayoutParams scoreDetailParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        scoreDetailParams.setMargins(0, 0, 0, (int)(10*density));
+        tvScoreDetail.setLayoutParams(scoreDetailParams);
+        inner.addView(tvScoreDetail);
+
+        // Description
+        TextView tvDesc = new TextView(this);
+        tvDesc.setText(description);
+        tvDesc.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        tvDesc.setTextColor(android.graphics.Color.argb(230, 255, 255, 255));
+        inner.addView(tvDesc);
+
+        card.addView(inner);
+
+        // Insert at position 0 so it is always the very first item visible
+        resultsContainer.addView(card, 0);
     }
 
     private void addSectionTitle(String title) {
@@ -296,6 +487,79 @@ public class QuestionnaireResultsActivity extends AppCompatActivity {
         params.setMargins(16, 16, 16, 16); // margins
         divider.setLayoutParams(params);
         resultsContainer.addView(divider);
+    }
+
+    /**
+     * Saves assessment-only entry to IntegratedResults SharedPreferences.
+     * has_biomarker = false so Combined Results shows "Biomarker test not taken".
+     * When the user later completes biomarker + IntegratedResultsActivity, a new
+     * full entry is added for that date.
+     */
+    private void saveAssessmentToIntegratedResults(String email,
+                                                    QuestionnaireSummary summary,
+                                                    long timestamp) {
+        int   phqScore  = summary.isPhq9Filled() ? summary.getPhq9Score() : -1;
+        float resScore  = summary.isBrsFilled()  ? (float) summary.getBrsScore() : -1f;
+        int   screener  = summary.getTotalScore();
+
+        // Derive weights using same logic as addStressLevelCard (screener fallback when not filled)
+        int phqWeight;
+        if (phqScore >= 0) {
+            phqWeight = phqScore <= 4 ? 1 : phqScore <= 9 ? 2 : phqScore <= 14 ? 3
+                      : phqScore <= 19 ? 4 : 5;
+        } else {
+            phqWeight = screener <= 10 ? 1 : screener <= 20 ? 2 : screener <= 32 ? 3
+                      : screener <= 44 ? 4 : 5;
+        }
+        int resWeight;
+        if (resScore >= 0f) {
+            resWeight = resScore < 3.0f ? 3 : resScore <= 4.3f ? 2 : 1;
+        } else {
+            resWeight = screener <= 15 ? 1 : screener <= 35 ? 2 : 3;
+        }
+
+        // Use 0 for the actual score fields when not filled (so history shows N/A)
+        int   savedPhqScore  = phqScore  >= 0 ? phqScore  : 0;
+        float savedResScore  = resScore  >= 0f ? resScore  : 0f;
+
+        int totalWeight = phqWeight + resWeight;  // biomarker weights are 0 — not taken yet
+
+        String stressLevel = "Assessment only";
+        String finalResult;
+        if      (totalWeight <= 2) finalResult = "Healthy";
+        else if (totalWeight <= 4) finalResult = "Concern";
+        else if (totalWeight <= 6) finalResult = "Mild";
+        else if (totalWeight <= 8) finalResult = "Moderate";
+        else                       finalResult = "Severe";
+
+        String resultId = email + "_" + timestamp;
+
+        android.content.SharedPreferences prefs =
+                getSharedPreferences("IntegratedResults", MODE_PRIVATE);
+        android.content.SharedPreferences.Editor ed = prefs.edit();
+
+        ed.putBoolean(resultId + "_has_assessment", true);
+        ed.putBoolean(resultId + "_has_biomarker",  false);
+        ed.putInt    (resultId + "_phq_score",      savedPhqScore);
+        ed.putInt    (resultId + "_phq_weight",     phqWeight);
+        ed.putFloat  (resultId + "_resilience_score",  savedResScore);
+        ed.putInt    (resultId + "_resilience_weight", resWeight);
+        ed.putFloat  (resultId + "_cortisol_value", 0f);
+        ed.putInt    (resultId + "_cortisol_weight", 0);
+        ed.putFloat  (resultId + "_dhea_value",     0f);
+        ed.putInt    (resultId + "_dhea_weight",    0);
+        ed.putFloat  (resultId + "_ratio_value",    0f);
+        ed.putInt    (resultId + "_ratio_weight",   0);
+        ed.putInt    (resultId + "_total_weight",   totalWeight);
+        ed.putString (resultId + "_stress_level",   stressLevel);
+        ed.putString (resultId + "_final_result",   finalResult);
+        ed.putLong   (resultId + "_timestamp",      timestamp);
+
+        // Append to history list
+        String history = prefs.getString(email + "_history", "");
+        history = history.isEmpty() ? resultId : history + "," + resultId;
+        ed.putString(email + "_history", history);
+        ed.apply();
     }
 
     private void navigateToBiomarkerActivity() {

@@ -10,23 +10,26 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/colorPrimary"
-        android:elevation="4dp"
+        android:background="@color/toolbar_background"
+        android:elevation="0dp"
         app:title="Cortisol History"
-        app:titleTextColor="@color/white" />
+        app:titleTextColor="@color/text_primary"
+        app:logoDescription="Cortisol Monitor"
+        app:navigationIcon="?attr/homeAsUpIndicator" />
 
     <TextView
         android:id="@+id/tvNoData"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="No cortisol data found."
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:textColor="@color/colorTextSecondary"
         android:gravity="center"
         android:padding="32dp"
         android:visibility="gone" />
 
     <ScrollView
+        android:overScrollMode="never"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 

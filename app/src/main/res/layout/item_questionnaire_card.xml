@@ -7,7 +7,7 @@
     android:layout_marginStart="8dp"
     android:layout_marginEnd="8dp"
     android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
+    android:layout_marginBottom="16dp"
     android:clickable="true"
     android:focusable="true"
     style="@style/Widget.App.CardView">
@@ -31,7 +31,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Questionnaire Title"
-                android:textSize="16sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
                 android:layout_marginEnd="8dp" />
@@ -94,7 +94,7 @@
                 android:layout_height="6dp"
                 android:progress="55"
                 android:progressTint="@color/primary"
-                android:progressBackgroundTint="@color/secondary" />
+                android:progressBackgroundTint="@color/surface_elevated" />
 
         </LinearLayout>
 
