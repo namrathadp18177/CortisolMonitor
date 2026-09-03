@@ -33,27 +33,50 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
-            android:id="@+id/historyContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
 
-            <TextView
-                android:id="@+id/tvEmptyState"
+            <!-- Outside historyContainer on purpose: onResume() calls
+                 historyContainer.removeAllViews(), which would wipe this button out if it
+                 lived inside that container. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportAllData"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="No saved results yet.\n\nComplete a full assessment, then tap 'Save Results' in the Integrated Assessment screen to see your history here."
-                android:textSize="15sp"
-                android:textColor="@color/text_secondary"
-                android:gravity="center"
-                android:lineSpacingExtra="4dp"
-                android:paddingTop="64dp"
-                android:paddingBottom="64dp"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp"
-                android:visibility="gone" />
+                android:minHeight="48dp"
+                android:text="Export all data (vitals + cortisol + questionnaire)"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                app:backgroundTint="@color/primary"
+                app:cornerRadius="10dp"
+                app:icon="@android:drawable/ic_menu_save"
+                app:iconTint="@color/white"
+                android:layout_marginBottom="16dp" />
 
+            <LinearLayout
+                android:id="@+id/historyContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvEmptyState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No saved results yet.\n\nComplete a full assessment, then tap 'Save Results' in the Integrated Assessment screen to see your history here."
+                    android:textSize="15sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:lineSpacingExtra="4dp"
+                    android:paddingTop="64dp"
+                    android:paddingBottom="64dp"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

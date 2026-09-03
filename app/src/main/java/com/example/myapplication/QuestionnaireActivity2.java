@@ -244,7 +244,7 @@ public class QuestionnaireActivity2 extends AppCompatActivity {
         calculateAndSaveResults();
         
         // Navigate to results
-        Intent intent = new Intent(QuestionnaireActivity2.this, CombinedResultsActivity.class);
+        Intent intent = new Intent(QuestionnaireActivity2.this, IntegratedResultsActivity.class);
         intent.putExtra("PHQ_SCORE", phqScore);
         intent.putExtra("PHQ_INTERPRETATION", phqInterpretation);
         intent.putExtra("RESILIENCE_SCORE", calculateResilienceScore());

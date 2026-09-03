@@ -13,19 +13,10 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.view.animation.BounceInterpolator;
 
-import java.security.SecureRandom;
-import java.util.Collections;
-
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
 import io.kommunicate.KmConversationBuilder;
-import io.kommunicate.KmSettings;
 import io.kommunicate.Kommunicate;
 import io.kommunicate.callbacks.KmCallback;
 import io.kommunicate.users.KMUser;
@@ -46,9 +37,6 @@ public class ChatbotActivity extends AppCompatActivity {
             
             // Initialize UI components
             initializeViews();
-
-            // Initialize SSL settings
-            initializeWithCustomSSL();
 
             // Check if chat is available (set by Application class)
             boolean chatAvailable = getSharedPreferences("app_prefs", MODE_PRIVATE)
@@ -144,35 +132,6 @@ public class ChatbotActivity extends AppCompatActivity {
             animatorSet.playTogether(scaleX, scaleY);
             animatorSet.setDuration(2000);
             animatorSet.start();
-        }
-    }
-
-    private void initializeWithCustomSSL() {
-        try {
-            TrustManager[] trustAllCerts = new TrustManager[] {
-                    new X509TrustManager() {
-                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                            return new java.security.cert.X509Certificate[]{};
-                        }
-
-                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
-                            // Skip validation
-                        }
-
-                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
-                            // Skip validation
-                        }
-                    }
-            };
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAllCerts, new SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-            HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
-        } catch (Exception e) {
-            e.printStackTrace();
-            // Continue without custom SSL if it fails
-            System.out.println("Custom SSL initialization failed, using default SSL settings");
         }
     }
 

@@ -687,7 +687,7 @@ public class QuestionnaireActivity extends AppCompatActivity {
 
             // Get current user email
             String userEmail = DatabaseHelper.getCurrentUserEmail();
-            Log.d("QuestionnaireActivity", "Submitting responses for user: " + userEmail);
+            Log.d("QuestionnaireActivity", "Submitting responses");
 
             // Save individual question responses
             for (Map.Entry<String, Integer> entry : responses.entrySet()) {

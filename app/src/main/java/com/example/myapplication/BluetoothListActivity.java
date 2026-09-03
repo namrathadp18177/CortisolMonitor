@@ -10,17 +10,21 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelUuid;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -44,6 +48,8 @@ public class BluetoothListActivity extends AppCompatActivity {
     private ListView             listViewDevices;
     private ProgressBar          progressScanning;
     private TextView             tvStatus;
+    private TextView             tvLocationWarning;
+    private Button               btnScanAgain;
     private BluetoothAdapter     bluetoothAdapter;
     private BluetoothLeScanner   leScanner;
     private ArrayAdapter<String> deviceArrayAdapter;
@@ -63,9 +69,11 @@ public class BluetoothListActivity extends AppCompatActivity {
 
     // -------------------------------------------------------------------------
     private void initializeViews() {
-        listViewDevices  = findViewById(R.id.listViewDevices);
-        progressScanning = findViewById(R.id.progressScanning);
-        tvStatus         = findViewById(R.id.tvStatus);
+        listViewDevices   = findViewById(R.id.listViewDevices);
+        progressScanning  = findViewById(R.id.progressScanning);
+        tvStatus          = findViewById(R.id.tvStatus);
+        tvLocationWarning = findViewById(R.id.tvLocationWarning);
+        btnScanAgain      = findViewById(R.id.btnScanAgain);
 
         deviceList          = new ArrayList<>();
         deviceArrayAdapter  = new ArrayAdapter<>(this,
@@ -76,6 +84,12 @@ public class BluetoothListActivity extends AppCompatActivity {
             if (position < deviceList.size()) {
                 connectToDevice(deviceList.get(position));
             }
+        });
+
+        btnScanAgain.setOnClickListener(v -> {
+            btnScanAgain.setVisibility(View.GONE);
+            tvLocationWarning.setVisibility(View.GONE);
+            proceedWithBluetoothSetup();
         });
     }
 
@@ -148,6 +162,28 @@ public class BluetoothListActivity extends AppCompatActivity {
     }
 
     // -------------------------------------------------------------------------
+    private boolean isLocationServiceEnabled() {
+        LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (lm == null) return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return lm.isLocationEnabled();
+        }
+        return lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+    }
+
+    private void showLocationServicesDialog() {
+        tvLocationWarning.setVisibility(View.VISIBLE);
+        new AlertDialog.Builder(this)
+                .setTitle("Location Services Required")
+                .setMessage("Android requires Location Services to be ON for Bluetooth scanning to work — even if location permission is already granted.\n\nPlease enable Location in Settings, then tap Scan Again.")
+                .setPositiveButton("Open Settings", (d, w) ->
+                        startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    // -------------------------------------------------------------------------
     private void startBleScan() {
         android.util.Log.d("BLEScan", "startBleScan() called, isScanning=" + isScanning);
         if (isScanning) return;
@@ -156,6 +192,16 @@ public class BluetoothListActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Toast.makeText(this, "BLUETOOTH_SCAN permission required", Toast.LENGTH_SHORT).show();
+            btnScanAgain.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        // Check that Location Services (system toggle) is ON — required for BLE scan results
+        if (!isLocationServiceEnabled()) {
+            progressScanning.setVisibility(View.GONE);
+            tvStatus.setText("Location Services is OFF — required for BLE scanning.");
+            btnScanAgain.setVisibility(View.VISIBLE);
+            showLocationServicesDialog();
             return;
         }
 
@@ -168,6 +214,8 @@ public class BluetoothListActivity extends AppCompatActivity {
 
         deviceArrayAdapter.clear();
         deviceList.clear();
+        tvLocationWarning.setVisibility(View.GONE);
+        btnScanAgain.setVisibility(View.GONE);
 
         // Scan with no filter — ESP32 often doesn't advertise service UUID
         // until after connection, so filtering by UUID hides it from the list.
@@ -199,9 +247,13 @@ public class BluetoothListActivity extends AppCompatActivity {
         }
 
         progressScanning.setVisibility(View.GONE);
-        tvStatus.setText(deviceList.isEmpty()
-                ? "No devices found. Ensure device is powered on."
-                : "Scan complete – tap a device to connect.");
+        btnScanAgain.setVisibility(View.VISIBLE);
+
+        if (deviceList.isEmpty()) {
+            tvStatus.setText("No devices found.\n• Make sure Optical_Detector_1 is powered on\n• Check that Location Services is ON in Settings\n• Toggle Bluetooth OFF then ON and scan again");
+        } else {
+            tvStatus.setText("Scan complete – tap a device to connect.");
+        }
     }
 
     // -------------------------------------------------------------------------

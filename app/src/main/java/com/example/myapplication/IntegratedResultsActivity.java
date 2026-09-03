@@ -203,7 +203,6 @@ public class IntegratedResultsActivity extends AppCompatActivity {
                 Log.w(TAG, "No username found, using default_user");
             }
         }
-        Log.d(TAG, "Using username: " + username);
 
         // Process PHQ-9 data
         if (intent.hasExtra("phq_score")) {
@@ -271,13 +270,9 @@ public class IntegratedResultsActivity extends AppCompatActivity {
     }
 
     private void logReceivedData() {
-        Log.d(TAG, "Received data:");
-        Log.d(TAG, "Username: " + username);
-        Log.d(TAG, "PHQ-9 Score: " + phqScore + ", Weight: " + phqWeight);
-        Log.d(TAG, "Resilience Score: " + resilienceScore + ", Weight: " + resilienceWeight);
-        Log.d(TAG, "Cortisol Value: " + cortisolValue + ", Weight: " + cortisolWeight);
-        Log.d(TAG, "DHEA Value: " + dheaValue + ", Weight: " + dheaWeight);
-        Log.d(TAG, "Cortisol/DHEA Ratio: " + cortisolToDheaRatio + ", Weight: " + ratioWeight);
+        // Not logging username, PHQ-9 score, or biomarker values/ratios — this is clinical
+        // mental-health and hormone data and must never land in logcat.
+        Log.d(TAG, "Integrated results data received");
     }
 
     private void loadSavedData() {
@@ -335,31 +330,62 @@ public class IntegratedResultsActivity extends AppCompatActivity {
     }
 
     private void calculateIntegratedResults() {
-        // Calculate total weight
         totalWeight = phqWeight + resilienceWeight + cortisolWeight + dheaWeight + ratioWeight;
 
-        // Calculate stress level based on biomarker weights
-        int biomarkerSum = cortisolWeight + dheaWeight + ratioWeight;
+        QuestionnaireSummary summary = DatabaseHelper.getInstance(this)
+                .getQuestionnaireSummary(username);
+        int phq = summary != null && summary.isPhq9Filled() ? summary.getPhq9Score() : Math.max(phqScore, 0);
+        int bdi = summary != null && summary.isBdiFilled() ? summary.getBdiScore() : 0;
+        int gad = summary != null && summary.isGad7Filled() ? summary.getGad7Score() : 0;
+        float brs = summary != null && summary.isBrsFilled()
+                ? (float) summary.getBrsScore()
+                : (resilienceScore > 0 ? resilienceScore : 3.2715f);
 
-        if (biomarkerSum <= 3) {
-            stressLevel = "Low/Healthy";
-        } else if (biomarkerSum <= 6) {
-            stressLevel = "Moderate Stress";
-        } else {
-            stressLevel = "High Stress";
+        UserDatabaseHelper udb = UserDatabaseHelper.getInstance(this);
+        int ageYears = udb.getUserAge(username);
+        boolean isMale = false;
+        UserData ud = udb.getUserData(username);
+        if (ud != null && ud.getSex() != null) {
+            String s = ud.getSex().trim().toLowerCase();
+            isMale = s.startsWith("m");
         }
 
-        // Calculate final result based on total weight
-        if (totalWeight <= 5) {
-            finalResult = "Healthy";
-        } else if (totalWeight <= 8) {
-            finalResult = "Concern";
-        } else if (totalWeight <= 11) {
-            finalResult = "Mild";
-        } else if (totalWeight <= 14) {
-            finalResult = "Moderate";
+        StressPredictor.Result prediction;
+        if (hasBiomarkerData && cortisolValue > 0) {
+            double dhea = dheaValue > 0 ? dheaValue : 10.0677;
+            double ratio = cortisolToDheaRatio > 0
+                    ? cortisolToDheaRatio
+                    : (dhea > 0 ? cortisolValue / dhea : 12.4035);
+            prediction = StressPredictor.predict(this, phq, bdi, gad, brs,
+                    cortisolValue, dhea, ratio, ageYears, isMale);
         } else {
-            finalResult = "Severe";
+            prediction = StressPredictor.predictAssessmentOnly(
+                    this, phq, bdi, gad, brs, ageYears, isMale);
+        }
+
+        if (prediction != null) {
+            stressLevel = prediction.getLabel();
+            finalResult = prediction.getLabel();
+        } else {
+            int biomarkerSum = cortisolWeight + dheaWeight + ratioWeight;
+            if (biomarkerSum <= 3) {
+                stressLevel = "Low/Healthy";
+            } else if (biomarkerSum <= 6) {
+                stressLevel = "Moderate Stress";
+            } else {
+                stressLevel = "High Stress";
+            }
+            if (totalWeight <= 5) {
+                finalResult = "Healthy";
+            } else if (totalWeight <= 8) {
+                finalResult = "Concern";
+            } else if (totalWeight <= 11) {
+                finalResult = "Mild";
+            } else if (totalWeight <= 14) {
+                finalResult = "Moderate";
+            } else {
+                finalResult = "Severe";
+            }
         }
     }
 
@@ -613,6 +639,8 @@ public class IntegratedResultsActivity extends AppCompatActivity {
         editor.putString(resultId + "_stress_level", stressLevel);
         editor.putString(resultId + "_final_result", finalResult);
         editor.putLong(resultId + "_timestamp", timestamp);
+        editor.putString(resultId + "_model", StressPredictor.MODEL_FILE);
+        editor.putString(resultId + "_classifier", "onnx_random_forest_ir9");
 
         // Save as part of the history list
         String historyList = prefs.getString(username + "_history", "");

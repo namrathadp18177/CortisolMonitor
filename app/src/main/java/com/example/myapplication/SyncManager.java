@@ -19,6 +19,7 @@ public class SyncManager {
     private final UserDatabaseHelper userDb;
     private final DatabaseHelper appDb;
     private final String uid;
+    private boolean hadFailure;
 
     public SyncManager(Context context) {
         this.context = context.getApplicationContext();
@@ -28,6 +29,16 @@ public class SyncManager {
         this.uid = FirebaseAuthHelper.getCurrentUid();
     }
 
+    private String currentEmail() {
+        String email = FirebaseAuthHelper.getCurrentEmail();
+        return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    private boolean belongsToSignedInUser(String rowEmail) {
+        if (rowEmail == null) return false;
+        return currentEmail().equals(rowEmail.trim().toLowerCase());
+    }
+
     public void pushAllDirtyData(SyncCallback callback) {
         if (uid == null || uid.isEmpty()) {
             Log.w(TAG, "No UID available, skipping sync");
@@ -35,6 +46,7 @@ public class SyncManager {
             return;
         }
 
+        hadFailure = false;
         Log.d(TAG, "Starting push sync for UID: " + uid);
 
         pushUsers(() ->
@@ -43,6 +55,13 @@ public class SyncManager {
                                 pushBiomarkerExperiments(() ->
                                         pushQuestionnaireResponses(() ->
                                                 pushQuestionnaireSummaries(() -> {
+                                                    if (hadFailure) {
+                                                        Log.e(TAG, "Sync finished with one or more failures; leaving remaining dirty flags");
+                                                        if (callback != null) {
+                                                            callback.onFailure("One or more records failed to sync");
+                                                        }
+                                                        return;
+                                                    }
                                                     Log.d(TAG, "All dirty data pushed successfully");
                                                     FirebaseAuthHelper.saveLastSyncAt(context, uid,
                                                             new java.text.SimpleDateFormat(
@@ -78,8 +97,15 @@ public class SyncManager {
             long rowId       = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
             String cloudId   = cursor.getString(cursor.getColumnIndexOrThrow("cloud_id"));
 
+            String username = cursor.getString(cursor.getColumnIndexOrThrow("username"));
+            if (!belongsToSignedInUser(username)) {
+                done[0]++;
+                if (done[0] >= total) onComplete.run();
+                continue;
+            }
+
             Map<String, Object> data = new HashMap<>();
-            data.put("username",      cursor.getString(cursor.getColumnIndexOrThrow("username")));
+            data.put("username",      username);
             data.put("source",        cursor.getString(cursor.getColumnIndexOrThrow("source")));
             data.put("timestamp",     cursor.getLong(cursor.getColumnIndexOrThrow("timestamp")));
             data.put("sampling_rate", cursor.getInt(cursor.getColumnIndexOrThrow("sampling_rate")));
@@ -103,6 +129,7 @@ public class SyncManager {
                             if (done[0] >= total) onComplete.run();
                         })
                         .addOnFailureListener(e -> {
+                            hadFailure = true;
                             Log.e(TAG, "Failed to update experiment: " + e.getMessage());
                             done[0]++;
                             if (done[0] >= total) onComplete.run();
@@ -119,6 +146,7 @@ public class SyncManager {
                             if (done[0] >= total) onComplete.run();
                         })
                         .addOnFailureListener(e -> {
+                            hadFailure = true;
                             Log.e(TAG, "Failed to add experiment: " + e.getMessage());
                             done[0]++;
                             if (done[0] >= total) onComplete.run();
@@ -163,8 +191,10 @@ public class SyncManager {
 
             // Firestore batch limit is 500 writes
             if (batchCount == 500) {
-                batch.commit().addOnFailureListener(e ->
-                        Log.e(TAG, "Batch write failed for data_points: " + e.getMessage()));
+                batch.commit().addOnFailureListener(e -> {
+                    hadFailure = true;
+                    Log.e(TAG, "Batch write failed for data_points: " + e.getMessage());
+                });
                 batch = db.batch();
                 batchCount = 0;
             }
@@ -175,8 +205,10 @@ public class SyncManager {
             batch.commit()
                     .addOnSuccessListener(unused ->
                             Log.d(TAG, "Synced data_points for experiment: " + cloudExperimentId))
-                    .addOnFailureListener(e ->
-                            Log.e(TAG, "Final batch write failed: " + e.getMessage()));
+                    .addOnFailureListener(e -> {
+                            hadFailure = true;
+                            Log.e(TAG, "Final batch write failed: " + e.getMessage());
+                    });
         }
     }
 
@@ -196,6 +228,12 @@ public class SyncManager {
         while (cursor.moveToNext()) {
             long rowId     = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
             String cloudId = cursor.getString(cursor.getColumnIndexOrThrow("cloud_id"));
+            String rowEmail = cursor.getString(cursor.getColumnIndexOrThrow("user_email"));
+            if (!belongsToSignedInUser(rowEmail)) {
+                done[0]++;
+                if (done[0] >= total) onComplete.run();
+                continue;
+            }
 
             Map<String, Object> data = new HashMap<>();
 
@@ -204,7 +242,7 @@ public class SyncManager {
             data.put("answer",             cursor.getInt(cursor.getColumnIndexOrThrow("answer")));
             data.put("timestamp",          cursor.getLong(cursor.getColumnIndexOrThrow("timestamp")));
             data.put("questionnaire_type", cursor.getString(cursor.getColumnIndexOrThrow("questionnaire_type")));
-            data.put("user_email",         cursor.getString(cursor.getColumnIndexOrThrow("user_email")));
+            data.put("user_email",         rowEmail);
             data.put("updated_at",         cursor.getString(cursor.getColumnIndexOrThrow("updated_at")));
 
             if (cloudId != null && !cloudId.isEmpty()) {
@@ -217,6 +255,7 @@ public class SyncManager {
                             if (done[0] >= total) onComplete.run();
                         })
                         .addOnFailureListener(e -> {
+                            hadFailure = true;
                             Log.e(TAG, "Failed to update response: " + e.getMessage());
                             done[0]++;
                             if (done[0] >= total) onComplete.run();
@@ -230,6 +269,7 @@ public class SyncManager {
                             if (done[0] >= total) onComplete.run();
                         })
                         .addOnFailureListener(e -> {
+                            hadFailure = true;
                             Log.e(TAG, "Failed to add response: " + e.getMessage());
                             done[0]++;
                             if (done[0] >= total) onComplete.run();
@@ -254,10 +294,16 @@ public class SyncManager {
 
         while (cursor.moveToNext()) {
             long rowId = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
+            String rowEmail = cursor.getString(cursor.getColumnIndexOrThrow("user_email"));
+            if (!belongsToSignedInUser(rowEmail)) {
+                done[0]++;
+                if (done[0] >= total) onComplete.run();
+                continue;
+            }
 
             Map<String, Object> data = new HashMap<>();
             // all column names now match DB schema
-            data.put("user_email",      cursor.getString(cursor.getColumnIndexOrThrow("user_email")));
+            data.put("user_email",      rowEmail);
             data.put("score_a",         cursor.getInt(cursor.getColumnIndexOrThrow("score_a")));
             data.put("score_b",         cursor.getInt(cursor.getColumnIndexOrThrow("score_b")));
             data.put("score_c",         cursor.getInt(cursor.getColumnIndexOrThrow("score_c")));
@@ -291,6 +337,7 @@ public class SyncManager {
                         if (done[0] >= total) onComplete.run();
                     })
                     .addOnFailureListener(e -> {
+                        hadFailure = true;
                         Log.e(TAG, "Failed to sync summary: " + e.getMessage());
                         done[0]++;
                         if (done[0] >= total) onComplete.run();
@@ -312,6 +359,11 @@ public class SyncManager {
         while (cursor.moveToNext()) {
             long rowId = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
             String email = cursor.getString(cursor.getColumnIndexOrThrow("email"));
+            if (!belongsToSignedInUser(email)) {
+                done[0]++;
+                if (done[0] >= total) onComplete.run();
+                continue;
+            }
 
             Map<String, Object> data = new HashMap<>();
             data.put("email", email);
@@ -331,11 +383,12 @@ public class SyncManager {
                     .set(data, SetOptions.merge())
                     .addOnSuccessListener(unused -> {
                         userDb.markAsSynced("users", "id", rowId, uid);
-                        Log.d(TAG, "Synced user profile: " + email);
+                        Log.d(TAG, "Synced user profile");
                         done[0]++;
                         if (done[0] >= total) onComplete.run();
                     })
                     .addOnFailureListener(e -> {
+                        hadFailure = true;
                         Log.e(TAG, "Failed to sync user: " + e.getMessage());
                         done[0]++;
                         if (done[0] >= total) onComplete.run();
@@ -344,6 +397,10 @@ public class SyncManager {
         cursor.close();
     }
     private void pushCareProviders(Runnable onComplete) {
+        if (!"CARE_PROVIDER".equals(FirebaseAuthHelper.getSavedRole(context))) {
+            onComplete.run();
+            return;
+        }
         Cursor cursor = userDb.getDirtyRows("care_providers");
         if (cursor == null || cursor.getCount() == 0) {
             if (cursor != null) cursor.close();
@@ -357,6 +414,11 @@ public class SyncManager {
         while (cursor.moveToNext()) {
             long rowId = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
             String email = cursor.getString(cursor.getColumnIndexOrThrow("email"));
+            if (!belongsToSignedInUser(email)) {
+                done[0]++;
+                if (done[0] >= total) onComplete.run();
+                continue;
+            }
 
             Map<String, Object> data = new HashMap<>();
             data.put("email", email);
@@ -377,11 +439,12 @@ public class SyncManager {
                     .set(data, SetOptions.merge())
                     .addOnSuccessListener(unused -> {
                         userDb.markAsSynced("care_providers", "id", rowId, uid);
-                        Log.d(TAG, "Synced care provider: " + email);
+                        Log.d(TAG, "Synced care provider profile");
                         done[0]++;
                         if (done[0] >= total) onComplete.run();
                     })
                     .addOnFailureListener(e -> {
+                        hadFailure = true;
                         Log.e(TAG, "Failed to sync care provider: " + e.getMessage());
                         done[0]++;
                         if (done[0] >= total) onComplete.run();
@@ -390,6 +453,10 @@ public class SyncManager {
         cursor.close();
     }
     private void pushCpPatientInfo(Runnable onComplete) {
+        if (!"CARE_PROVIDER".equals(FirebaseAuthHelper.getSavedRole(context))) {
+            onComplete.run();
+            return;
+        }
         Cursor cursor = userDb.getDirtyRows("cp_patient_info");
         if (cursor == null || cursor.getCount() == 0) {
             if (cursor != null) cursor.close();
@@ -419,11 +486,12 @@ public class SyncManager {
                     .set(data, SetOptions.merge())
                     .addOnSuccessListener(unused -> {
                         userDb.markAsSyncedByEmail("cp_patient_info", patientEmail, patientId);
-                        Log.d(TAG, "Synced cp_patient_info for: " + patientEmail);
+                        Log.d(TAG, "Synced cp_patient_info record");
                         done[0]++;
                         if (done[0] >= total) onComplete.run();
                     })
                     .addOnFailureListener(e -> {
+                        hadFailure = true;
                         Log.e(TAG, "Failed to sync cp_patient_info: " + e.getMessage());
                         done[0]++;
                         if (done[0] >= total) onComplete.run();

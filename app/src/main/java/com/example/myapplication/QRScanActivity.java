@@ -162,21 +162,14 @@ public class QRScanActivity extends AppCompatActivity {
             return;
         }
 
-        // Default: ANALYSER mode (existing behavior)
-        if (!rawValue.contains(VALID_DEVICE_NAME)) {
-            runOnUiThread(() -> {
-                tvScanStatus.setText("Invalid QR. Please scan your Analyser.");
-                Toast.makeText(this, "Not a valid Analyser QR code",
-                        Toast.LENGTH_SHORT).show();
-            });
-            return;
-        }
-
+        // Default: ANALYSER mode
+        // Accept either a full formatted QR (containing device name + MAC: prefix)
+        // or a plain MAC address (e.g. "14:33:5C:9C:49:EA")
         String macAddress = parseMacAddress(rawValue);
         if (macAddress == null) {
             runOnUiThread(() -> {
-                tvScanStatus.setText("Could not read device address.");
-                Toast.makeText(this, "QR code missing device address",
+                tvScanStatus.setText("Invalid QR. Please scan your Analyser.");
+                Toast.makeText(this, "Not a valid Analyser QR code",
                         Toast.LENGTH_SHORT).show();
             });
             return;
@@ -194,13 +187,19 @@ public class QRScanActivity extends AppCompatActivity {
 
     private String parseMacAddress(String qrValue) {
         try {
-            if (qrValue.contains("MAC:")) {
-                int start = qrValue.indexOf("MAC:") + 4;
-                int end = qrValue.indexOf(";", start);
-                if (end == -1) end = qrValue.length();
-                String mac = qrValue.substring(start, end).trim();
+            String trimmed = qrValue.trim();
+            // Format 1: plain MAC address (e.g. "14:33:5C:9C:49:EA")
+            if (trimmed.matches("([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}")) {
+                return trimmed.toUpperCase();
+            }
+            // Format 2: prefixed (e.g. "CortisolAnalyser;MAC:14:33:5C:9C:49:EA;")
+            if (trimmed.contains("MAC:")) {
+                int start = trimmed.indexOf("MAC:") + 4;
+                int end = trimmed.indexOf(";", start);
+                if (end == -1) end = trimmed.length();
+                String mac = trimmed.substring(start, end).trim();
                 if (mac.matches("([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}")) {
-                    return mac;
+                    return mac.toUpperCase();
                 }
             }
         } catch (Exception e) {

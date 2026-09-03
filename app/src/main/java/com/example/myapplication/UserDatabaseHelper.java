@@ -64,6 +64,14 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     public static final String COL_CP_RELATIONSHIP       = "relationship_status";
     public static final String COL_CP_MEDICAL_CONDITIONS = "medical_conditions";
 
+    // Auto-assigned password for patients pre-registered by a care provider (see
+    // RegisterPatientActivity), before the patient sets their own during activation.
+    // Shared here as a single source of truth rather than a literal repeated in two files.
+    /** Legacy shared password used only to detect old clinic-created accounts so they can
+     *  still log in once. New patients are given a random unguessable placeholder and a
+     *  Firebase password-reset email instead. */
+    public static final String DEFAULT_TEMP_PASSWORD = "Temp123!";
+
     // ── Session / singleton ─────────────────────────────────────────────────
     private static String currentUserEmail = "";
     private static UserDatabaseHelper instance;
@@ -82,7 +90,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
     public static void setCurrentUserEmail(String email) {
         currentUserEmail = email;
-        Log.d(TAG, "currentUserEmail → " + email);
+        Log.d(TAG, "currentUserEmail " + (email == null || email.isEmpty() ? "cleared" : "set"));
     }
 
     public static String getCurrentUserEmail() {
@@ -185,19 +193,19 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         // Check care_providers first — a CP email must NEVER reach the users table check.
         if (isCareProviderRegistered(email)) {
             if (loginCareProvider(email, password)) {
-                Log.d(TAG, "getUserRole → CARE_PROVIDER for " + email);
+                Log.d(TAG, "getUserRole → CARE_PROVIDER");
                 return "CARE_PROVIDER";
             } else {
                 // Email exists as CP but password is wrong — return null, not PATIENT.
-                Log.w(TAG, "getUserRole → CP email matched but wrong password for " + email);
+                Log.w(TAG, "getUserRole → CP email matched but wrong password");
                 return null;
             }
         }
         if (loginUser(email, password)) {
-            Log.d(TAG, "getUserRole → PATIENT for " + email);
+            Log.d(TAG, "getUserRole → PATIENT");
             return "PATIENT";
         }
-        Log.d(TAG, "getUserRole → no match for " + email);
+        Log.d(TAG, "getUserRole → no match");
         return null;
     }
 
@@ -220,7 +228,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     public long registerCareProvider(String name, String medicalId, String email, String password) {
         if (email != null) email = email.trim().toLowerCase();
         if (isCareProviderRegistered(email)) {
-            Log.w(TAG, "CP already exists: " + email);
+            Log.w(TAG, "CP registration rejected: email already exists");
             return -1;
         }
         if (isMedicalIdTaken(medicalId)) {
@@ -232,7 +240,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         v.put(COLUMN_CP_NAME,       name);
         v.put(COLUMN_CP_MEDICAL_ID, medicalId);
         v.put(COLUMN_CP_EMAIL,      email);
-        v.put(COLUMN_CP_PASSWORD,   password);
+        v.put(COLUMN_CP_PASSWORD,   PasswordHasher.hash(password));
         v.put("updated_at", getCurrentIsoTime());
         v.put("dirty", 1);
         long id = db.insert(TABLE_CARE_PROVIDERS, null, v);
@@ -248,10 +256,30 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     public boolean loginCareProvider(String email, String password) {
         if (email != null) email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID},
-                COLUMN_CP_EMAIL + "=? AND " + COLUMN_CP_PASSWORD + "=?",
-                new String[]{email, password}, null, null, null);
-        boolean ok = c.getCount() > 0;
+        // Fetch by email only — passwords are salted, so they can't be matched inside the
+        // SQL WHERE clause. Verification happens in Java below.
+        Cursor c = db.query(TABLE_CARE_PROVIDERS, new String[]{COLUMN_CP_ID, COLUMN_CP_PASSWORD},
+                COLUMN_CP_EMAIL + "=?", new String[]{email}, null, null, null);
+        boolean ok = false;
+        if (c.moveToFirst()) {
+            long id = c.getLong(0);
+            String stored = c.getString(1);
+            if (PasswordHasher.isHashed(stored)) {
+                ok = PasswordHasher.verify(password, stored);
+            } else {
+                // Legacy plaintext row from before hashing was added. Compare directly so
+                // existing accounts keep working, then silently upgrade this row to a proper
+                // hash so the plaintext value is never stored again after this login.
+                ok = stored != null && stored.equals(password);
+                if (ok) {
+                    ContentValues upgrade = new ContentValues();
+                    upgrade.put(COLUMN_CP_PASSWORD, PasswordHasher.hash(password));
+                    db.update(TABLE_CARE_PROVIDERS, upgrade, COLUMN_CP_ID + "=?",
+                            new String[]{String.valueOf(id)});
+                    Log.i(TAG, "Upgraded CP password to hashed storage on login");
+                }
+            }
+        }
         c.close();
         if (ok) setCurrentUserEmail(email);
         return ok;
@@ -353,14 +381,14 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                              float weightKg, float heightM, float bmi) {
         if (email != null) email = email.trim().toLowerCase();
         if (isUserRegistered(email)) {
-            Log.w(TAG, "Patient already exists: " + email);
+            Log.w(TAG, "Patient registration rejected: email already exists");
             return -1;
         }
         int age = calculateAgeFromBirthDate(birthDate);
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues v = new ContentValues();
         v.put(COLUMN_EMAIL,               email);
-        v.put(COLUMN_PASSWORD,            password);
+        v.put(COLUMN_PASSWORD,            PasswordHasher.hash(password));
         v.put(COLUMN_AGE,                 age);
         v.put(COLUMN_BIRTH_DATE,          birthDate);
         v.put(COLUMN_SEX,                 sex);
@@ -380,17 +408,36 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
     public boolean loginUser(String email, String password) {
         if (email != null) email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor c = db.query(TABLE_USERS, new String[]{COLUMN_ID},
-                COLUMN_EMAIL + "=? AND " + COLUMN_PASSWORD + "=?",
-                new String[]{email, password}, null, null, null);
-        int count = c.getCount();
-        c.close();
-        if (count > 0) {
-            setCurrentUserEmail(email);
-            Log.d(TAG, "Patient logged in: " + email);
-            return true;
+        // Fetch by email only — passwords are salted, so they can't be matched inside the
+        // SQL WHERE clause. Verification happens in Java below.
+        Cursor c = db.query(TABLE_USERS, new String[]{COLUMN_ID, COLUMN_PASSWORD},
+                COLUMN_EMAIL + "=?", new String[]{email}, null, null, null);
+        boolean ok = false;
+        if (c.moveToFirst()) {
+            long id = c.getLong(0);
+            String stored = c.getString(1);
+            if (PasswordHasher.isHashed(stored)) {
+                ok = PasswordHasher.verify(password, stored);
+            } else {
+                // Legacy plaintext row from before hashing was added. Compare directly so
+                // existing accounts keep working, then silently upgrade this row to a proper
+                // hash so the plaintext value is never stored again after this login.
+                ok = stored != null && stored.equals(password);
+                if (ok) {
+                    ContentValues upgrade = new ContentValues();
+                    upgrade.put(COLUMN_PASSWORD, PasswordHasher.hash(password));
+                    db.update(TABLE_USERS, upgrade, COLUMN_ID + "=?",
+                            new String[]{String.valueOf(id)});
+                    Log.i(TAG, "Upgraded patient password to hashed storage on login");
+                }
+            }
         }
-        return false;
+        c.close();
+        if (ok) {
+            setCurrentUserEmail(email);
+            Log.d(TAG, "Patient logged in");
+        }
+        return ok;
     }
 
     public boolean isUserRegistered(String email) {
@@ -430,9 +477,9 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 userData.setWeightKg(c.getFloat(c.getColumnIndexOrThrow(COLUMN_WEIGHT_KG)));
                 userData.setHeightM(c.getFloat(c.getColumnIndexOrThrow(COLUMN_HEIGHT_M)));
                 userData.setBmi(c.getFloat(c.getColumnIndexOrThrow(COLUMN_BMI)));
-                Log.d(TAG, "getUserData ok: " + email);
+                Log.d(TAG, "getUserData ok");
             } else {
-                Log.w(TAG, "getUserData: no row for " + email);
+                Log.w(TAG, "getUserData: no matching row");
             }
         } catch (Exception e) {
             Log.e(TAG, "getUserData error: " + e.getMessage());
@@ -482,8 +529,8 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         v.put("updated_at", getCurrentIsoTime());
         v.put("dirty", 1);
         int rows = db.update(TABLE_USERS, v, COLUMN_EMAIL + "=?", new String[]{email});
-        if (rows > 0) { Log.d(TAG, "Demographics updated: " + email); return true; }
-        Log.e(TAG, "Demographics update failed: " + email);
+        if (rows > 0) { Log.d(TAG, "Demographics updated"); return true; }
+        Log.e(TAG, "Demographics update failed");
         return false;
     }
 
@@ -503,7 +550,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         email = email.trim().toLowerCase();
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues v = new ContentValues();
-        v.put(COLUMN_PASSWORD, newPassword);
+        v.put(COLUMN_PASSWORD, PasswordHasher.hash(newPassword));
         return db.update(TABLE_USERS, v, COLUMN_EMAIL + "=?", new String[]{email}) > 0;
     }
 
@@ -588,7 +635,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 COL_CP_EMAIL + "=?", new String[]{email}, null, null, null);
         boolean linked = c != null && c.moveToFirst();
         if (c != null) c.close();
-        Log.d(TAG, "isPatientLinkedToAnyProvider(" + email + ")=" + linked);
+        Log.d(TAG, "isPatientLinkedToAnyProvider=" + linked);
         return linked;
     }
 
@@ -628,27 +675,48 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
             while (dupCursor.moveToNext()) {
                 String lowerEmail = dupCursor.getString(0);
 
-                // Rank all rows for this email: best survivor comes first.
+                // Passwords are now salted hashes, so "is this row still on the default
+                // Temp123! password" can no longer be checked inside SQL (a hash never
+                // literally equals 'Temp123!'). Fetch candidates and rank them in Java
+                // instead, using PasswordHasher to check hashed rows and a direct compare
+                // for any not-yet-upgraded legacy plaintext rows.
                 Cursor rows = db.rawQuery(
-                        "SELECT id FROM " + TABLE_USERS
-                        + " WHERE LOWER(TRIM(email)) = ?"
-                        + " ORDER BY"
-                        + "   CASE WHEN " + COLUMN_PASSWORD + " != 'Temp123!' THEN 0 ELSE 1 END ASC,"
-                        + "   " + COLUMN_AGE + " DESC,"
-                        + "   id ASC",
+                        "SELECT id, " + COLUMN_PASSWORD + ", " + COLUMN_AGE + " FROM " + TABLE_USERS
+                        + " WHERE LOWER(TRIM(email)) = ?",
                         new String[]{lowerEmail});
 
-                if (rows.moveToFirst()) {
-                    long keepId = rows.getLong(0); // first row = winner
-                    while (rows.moveToNext()) {
-                        long losingId = rows.getLong(0);
+                List<Object[]> candidates = new ArrayList<>(); // {id, isDefaultPassword, age}
+                while (rows.moveToNext()) {
+                    long id = rows.getLong(0);
+                    String storedPassword = rows.getString(1);
+                    int age = rows.getInt(2);
+                    boolean isDefaultPassword = PasswordHasher.isHashed(storedPassword)
+                            ? PasswordHasher.verify(DEFAULT_TEMP_PASSWORD, storedPassword)
+                            : DEFAULT_TEMP_PASSWORD.equals(storedPassword);
+                    candidates.add(new Object[]{id, isDefaultPassword, age});
+                }
+                rows.close();
+
+                // Survivor ranking, same rules as before: prefer a row that's NOT still on
+                // the default password, then higher age, then lower id (earliest).
+                candidates.sort((a, b) -> {
+                    boolean aDefault = (Boolean) a[1], bDefault = (Boolean) b[1];
+                    if (aDefault != bDefault) return aDefault ? 1 : -1;
+                    int aAge = (Integer) a[2], bAge = (Integer) b[2];
+                    if (aAge != bAge) return bAge - aAge;
+                    return Long.compare((Long) a[0], (Long) b[0]);
+                });
+
+                if (!candidates.isEmpty()) {
+                    long keepId = (Long) candidates.get(0)[0];
+                    for (int i = 1; i < candidates.size(); i++) {
+                        long losingId = (Long) candidates.get(i)[0];
                         db.execSQL("DELETE FROM " + TABLE_USERS + " WHERE id = ?",
                                 new Object[]{losingId});
                         Log.i(TAG, "Email dedup: deleted duplicate user row id=" + losingId
-                                + " (kept id=" + keepId + " for " + lowerEmail + ")");
+                                + " (kept id=" + keepId + ")");
                     }
                 }
-                rows.close();
             }
             dupCursor.close();
 
@@ -706,11 +774,11 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         int rows = db.delete(TABLE_USERS, COLUMN_EMAIL + "=?", new String[]{email});
         if (rows > 0) {
-            Log.d(TAG, "Patient deleted: " + email);
+            Log.d(TAG, "Patient deleted");
             if (email.equals(currentUserEmail)) currentUserEmail = "";
             return true;
         }
-        Log.w(TAG, "deleteUser: not found " + email);
+        Log.w(TAG, "deleteUser: not found");
         return false;
     }
 

@@ -223,7 +223,7 @@ public class OutputBluetooth extends AppCompatActivity {
             userEmail = intent.getStringExtra("user_email");
         }
 
-        android.util.Log.d("HISTORY_DEBUG", "OutputBluetooth saving experiment for: [" + userEmail + "]");
+        android.util.Log.d("HISTORY_DEBUG", "OutputBluetooth saving experiment");
 
 
 
@@ -638,97 +638,97 @@ public class OutputBluetooth extends AppCompatActivity {
         Toast.makeText(this, "Data collection stopped", Toast.LENGTH_SHORT).show();
         Log.i(TAG, "Data collection stopped - Bluetooth connection maintained");
     }
-    private void showStepOverlay() {
-        View container = findViewById(R.id.stepOverlayContainer);
-        if (container == null) {
-            android.util.Log.e("OVERLAY", "stepOverlayContainer not found in layout!");
-            return;
-        }
-        container.setVisibility(View.VISIBLE);
-        android.util.Log.d("OVERLAY", "Container visibility set to VISIBLE: " + container.getVisibility());
-
-        // Step 1 — 5 minute timer
-        StepModel step1 = new StepModel("STEP 01", "Collect Saliva",
-                "Put the soft swab under your tongue. Keep it there for 5 full minutes until it becomes very wet with saliva. Try not to talk during this time.",
-                null, R.drawable.ic_step_collection, true, false);
-        step1.timerDurationMs = 5 * 60 * 1000;
-
-
-// Step 5 — 20 minute timer
-        StepModel step5 = new StepModel("STEP 05", "Wait 20 Minutes",
-                "Place the test strip on a flat surface. Do not move it. Wait 20 full minutes to process.",
-                null, R.drawable.ic_step_wait, true, false);
-        step5.timerDurationMs = 20 * 60 * 1000;
-        step5.showMotivation = false;
-
-
-// Step 6 — Final step
-        StepModel step6 = new StepModel("STEP 06", "Insert into Analyser",
-                "After waiting 20 minutes, gently insert the test strip into the Analyser to see begin reading.",
-                null, R.drawable.ic_step_analyser, false, false);
-
-
-        List<StepModel> steps = new ArrayList<>(Arrays.asList(
-                step1,
-
-                new StepModel("STEP 02", "Move Saliva to Tube",
-                        "Place the swab into the tube. Push it down slowly and firmly as shown to release the saliva into the tube.",
-                        null, R.drawable.ic_step_extraction, false, false),
-
-                new StepModel("STEP 03", "Store Sample (Optional)",
-                        "If you would like to use the sample later:",
-                        new ArrayList<>(Arrays.asList(
-                                "Remove the tube carefully",
-                                "Close it tightly with the cap",
-                                "Store in a freezer at -20°C if not using immediately"
-                        )), R.drawable.ic_step_storage, false, true),
-
-                new StepModel("STEP 04", "Add Drops to Test Strip",
-                        "Turn the tube upside down. Gently squeeze 4 to 5 drops onto the test strip.",
-                        null, R.drawable.ic_step_loading, false, false),
-
-                step5,
-                step6
-        ));
-        StepOverlayFragment fragment = StepOverlayFragment.newInstance(steps);
-        fragment.setStepOverlayListener(new StepOverlayFragment.StepOverlayListener() {
-            @Override
-            public void onOverlayComplete() {
-                getSupportFragmentManager()
-                        .beginTransaction()
-                        .remove(fragment)
-                        .commit();
-                findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
-
-                // NOW start actual sample collection after step 5
-                started = true;
-                sendTimer(true);
-                startButton.setEnabled(false);
-//                stopButton.setEnabled(true);
-                connectButton.setEnabled(false);
-                // settingsButton.setEnabled(true);
-//                saveButton.setEnabled(false);
-                showButton.setEnabled(false);
-                Log.i(TAG, "Overlay complete - sample collection started");
-            }
-
-
-            @Override
-            public void onStoredForLater() {
-                getSupportFragmentManager()
-                        .beginTransaction()
-                        .remove(fragment)
-                        .commit();
-                findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
-                onClickStop(null);
-            }
-        });
-
-        getSupportFragmentManager()
-                .beginTransaction()
-                .add(R.id.stepOverlayContainer, fragment, "step_overlay")
-                .commit();
-    }
+//    private void showStepOverlay() {
+//        View container = findViewById(R.id.stepOverlayContainer);
+//        if (container == null) {
+//            android.util.Log.e("OVERLAY", "stepOverlayContainer not found in layout!");
+//            return;
+//        }
+//        container.setVisibility(View.VISIBLE);
+//        android.util.Log.d("OVERLAY", "Container visibility set to VISIBLE: " + container.getVisibility());
+//
+//        // Step 1 — 5 minute timer
+//        StepModel step1 = new StepModel("STEP 01", "Collect Saliva",
+//                "Put the soft swab under your tongue. Keep it there for 5 full minutes until it becomes very wet with saliva. Try not to talk during this time.",
+//                null, R.drawable.ic_step_collection, true, false);
+//        step1.timerDurationMs = 5 * 60 * 1000;
+//
+//
+//// Step 5 — 20 minute timer
+//        StepModel step5 = new StepModel("STEP 05", "Wait 20 Minutes",
+//                "Place the test strip on a flat surface. Do not move it. Wait 20 full minutes to process.",
+//                null, R.drawable.ic_step_wait, true, false);
+//        step5.timerDurationMs = 20 * 60 * 1000;
+//        step5.showMotivation = false;
+//
+//
+//// Step 6 — Final step
+//        StepModel step6 = new StepModel("STEP 06", "Insert into Analyser",
+//                "After waiting 20 minutes, gently insert the test strip into the Analyser to see begin reading.",
+//                null, R.drawable.ic_step_analyser, false, false);
+//
+//
+//        List<StepModel> steps = new ArrayList<>(Arrays.asList(
+//                step1,
+//
+//                new StepModel("STEP 02", "Move Saliva to Tube",
+//                        "Place the swab into the tube. Push it down slowly and firmly as shown to release the saliva into the tube.",
+//                        null, R.drawable.ic_step_extraction, false, false),
+//
+//                new StepModel("STEP 03", "Store Sample (Optional)",
+//                        "If you would like to use the sample later:",
+//                        new ArrayList<>(Arrays.asList(
+//                                "Remove the tube carefully",
+//                                "Close it tightly with the cap",
+//                                "Store in a freezer at -20°C if not using immediately"
+//                        )), R.drawable.ic_step_storage, false, true),
+//
+//                new StepModel("STEP 04", "Add Drops to Test Strip",
+//                        "Turn the tube upside down. Gently squeeze 4 to 5 drops onto the test strip.",
+//                        null, R.drawable.ic_step_loading, false, false),
+//
+//                step5,
+//                step6
+//        ));
+//        StepOverlayFragment fragment = StepOverlayFragment.newInstance(steps);
+//        fragment.setStepOverlayListener(new StepOverlayFragment.StepOverlayListener() {
+//            @Override
+//            public void onOverlayComplete() {
+//                getSupportFragmentManager()
+//                        .beginTransaction()
+//                        .remove(fragment)
+//                        .commit();
+//                findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
+//
+//                // NOW start actual sample collection after step 5
+//                started = true;
+//                sendTimer(true);
+//                startButton.setEnabled(false);
+////                stopButton.setEnabled(true);
+//                connectButton.setEnabled(false);
+//                // settingsButton.setEnabled(true);
+////                saveButton.setEnabled(false);
+//                showButton.setEnabled(false);
+//                Log.i(TAG, "Overlay complete - sample collection started");
+//            }
+//
+//
+//            @Override
+//            public void onStoredForLater() {
+//                getSupportFragmentManager()
+//                        .beginTransaction()
+//                        .remove(fragment)
+//                        .commit();
+//                findViewById(R.id.stepOverlayContainer).setVisibility(View.GONE);
+//                onClickStop(null);
+//            }
+//        });
+//
+//        getSupportFragmentManager()
+//                .beginTransaction()
+//                .add(R.id.stepOverlayContainer, fragment, "step_overlay")
+//                .commit();
+//    }
 
 
 
@@ -813,7 +813,7 @@ public class OutputBluetooth extends AppCompatActivity {
                     .edit()
                     .putFloat("latest_cortisol_ng_ml", (float) finalCortisol)
                     .apply();
-            Log.i(TAG, "Saved latest_cortisol_ng_ml=" + finalCortisol + " to SharedPreferences");
+            Log.i(TAG, "Saved latest cortisol reading to SharedPreferences");
 
             Intent resultActivity = new Intent(this, ResultActivity.class);
             resultActivity.putExtra("max_value_port0", max0);
@@ -1544,7 +1544,7 @@ public class OutputBluetooth extends AppCompatActivity {
                     dataPointsavgd
             );
 
-            Log.d("DEBUG_SAVE", "Saved cortisol to DB = " + finalCortisol);
+            Log.d("DEBUG_SAVE", "Saved cortisol reading to DB");
             new SyncManager(getApplicationContext()).pushAllDirtyData(null);
 
         } catch (Exception e) {

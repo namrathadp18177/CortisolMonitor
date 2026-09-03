@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
+   Controls what Android's Auto Backup (cloud-backup, API 31+) and device-to-device
+   transfer include. Explicitly excludes every local database and the SharedPreferences
+   file that hold account passwords, PHQ-9/BDI/GAD-7/BRS screener data, biomarker/cortisol
+   results, and cached credentials — these must never leave the device via backup/transfer.
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="database" path="AppData.db" />
+        <exclude domain="database" path="UserProfile.db" />
+        <exclude domain="database" path="watch_vitals.db" />
+        <exclude domain="sharedpref" path="user_prefs.xml" />
+        <exclude domain="sharedpref" path="cortisol_prefs.xml" />
+        <exclude domain="sharedpref" path="BiomarkerResults.xml" />
+        <exclude domain="sharedpref" path="AssessmentResults.xml" />
+        <exclude domain="sharedpref" path="IntegratedResults.xml" />
+        <exclude domain="sharedpref" path="SessionStressResults.xml" />
+        <exclude domain="sharedpref" path="SessionScoreDetails.xml" />
+        <exclude domain="sharedpref" path="session.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="database" path="AppData.db" />
+        <exclude domain="database" path="UserProfile.db" />
+        <exclude domain="database" path="watch_vitals.db" />
+        <exclude domain="sharedpref" path="user_prefs.xml" />
+        <exclude domain="sharedpref" path="cortisol_prefs.xml" />
+        <exclude domain="sharedpref" path="BiomarkerResults.xml" />
+        <exclude domain="sharedpref" path="AssessmentResults.xml" />
+        <exclude domain="sharedpref" path="IntegratedResults.xml" />
+        <exclude domain="sharedpref" path="SessionStressResults.xml" />
+        <exclude domain="sharedpref" path="SessionScoreDetails.xml" />
+        <exclude domain="sharedpref" path="session.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>

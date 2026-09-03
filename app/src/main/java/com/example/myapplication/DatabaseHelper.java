@@ -106,7 +106,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // Method to set current user email (used by UserDatabaseHelper)
     public static void setCurrentUserEmail(String email) {
         currentUserEmail = email;
-        Log.d(TAG, "Current user email set to: " + email);
+        Log.d(TAG, "Current user email set (" + (email == null || email.isEmpty() ? "cleared" : "set") + ")");
     }
 
     // Method to get current user email
@@ -334,8 +334,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 values.put("updated_at", getCurrentIsoTime());
                 values.put("dirty", 1);
 
-                Log.d(TAG, "Inserting response with user_email: " + userEmail);
-                Log.d(TAG, "Response details: " + response.getSection() + " - " + response.getQuestionText());
+                // Not logging user_email or question/answer content here — questionnaire
+                // responses can include mental-health screener data, so real values must
+                // never land in logcat. Log only non-identifying structural info.
+                Log.d(TAG, "Inserting response for section: " + response.getSection());
 
                 long id = db.insert("questionnaire_responses", null, values);
 
@@ -647,7 +649,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         totalScore += getMentalHealthScreenerPartScore("E");
         totalScore += getMentalHealthScreenerPartScore("F");
 
-        Log.d(TAG, "Total Mental Health Screener score: " + totalScore);
+        // Not logging the actual score — clinical screener data.
         return totalScore;
     }
 
@@ -694,7 +696,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 int answer = cursor.getInt(cursor.getColumnIndexOrThrow("answer"));
                 partScore += answer;
             }
-            Log.d(TAG, "Part " + part + " score: " + partScore);
+            // Not logging the actual score — clinical screener data.
         } catch (Exception e) {
             Log.e(TAG, "Error calculating part score: " + e.getMessage());
         }
@@ -771,6 +773,74 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Returns every raw questionnaire response for every user, each row tagged with the
+     * start/end timestamp of the test-taking session it belongs to (MIN/MAX of that same
+     * session_id + questionnaire_type + user combination). This makes each row
+     * self-describing — you can tell exactly when that particular sitting started and
+     * ended — even if the same person takes the same questionnaire multiple times in one
+     * day, since each sitting has its own session_id.
+     *
+     * Used for CSV export (see VitalsCsvExporter) so a single export captures every
+     * participant's full questionnaire history, not just whoever is currently logged in.
+     */
+    public Cursor getAllQuestionnaireResponsesWithSessionBounds() {
+        SQLiteDatabase db = getReadableDatabase();
+        String sql = "SELECT r.user_email, r.questionnaire_type, r.session_id, r.section, " +
+                "r.question_text, r.answer, r.timestamp AS response_timestamp, " +
+                "(SELECT MIN(r2.timestamp) FROM questionnaire_responses r2 " +
+                "   WHERE r2.session_id = r.session_id " +
+                "     AND r2.questionnaire_type = r.questionnaire_type " +
+                "     AND r2.user_email = r.user_email) AS session_start_ms, " +
+                "(SELECT MAX(r2.timestamp) FROM questionnaire_responses r2 " +
+                "   WHERE r2.session_id = r.session_id " +
+                "     AND r2.questionnaire_type = r.questionnaire_type " +
+                "     AND r2.user_email = r.user_email) AS session_end_ms " +
+                "FROM questionnaire_responses r " +
+                "ORDER BY r.user_email ASC, r.session_id ASC, r.timestamp ASC";
+        return db.rawQuery(sql, null);
+    }
+
+    /** Same as {@link #getAllQuestionnaireResponsesWithSessionBounds()} but scoped to one
+     *  user — the app is single-patient-per-login, so bulk exports (Combined Results, Live
+     *  Vitals, Questionnaires tab "export all" buttons) should only ever cover whoever is
+     *  currently logged in, not every account that has ever used this phone. */
+    public Cursor getQuestionnaireResponsesForUserWithSessionBounds(String userEmail) {
+        SQLiteDatabase db = getReadableDatabase();
+        String sql = "SELECT r.user_email, r.questionnaire_type, r.session_id, r.section, " +
+                "r.question_text, r.answer, r.timestamp AS response_timestamp, " +
+                "(SELECT MIN(r2.timestamp) FROM questionnaire_responses r2 " +
+                "   WHERE r2.session_id = r.session_id " +
+                "     AND r2.questionnaire_type = r.questionnaire_type " +
+                "     AND r2.user_email = r.user_email) AS session_start_ms, " +
+                "(SELECT MAX(r2.timestamp) FROM questionnaire_responses r2 " +
+                "   WHERE r2.session_id = r.session_id " +
+                "     AND r2.questionnaire_type = r.questionnaire_type " +
+                "     AND r2.user_email = r.user_email) AS session_end_ms " +
+                "FROM questionnaire_responses r " +
+                "WHERE r.user_email = ? " +
+                "ORDER BY r.session_id ASC, r.timestamp ASC";
+        return db.rawQuery(sql, new String[]{userEmail});
+    }
+
+    /** Same as {@link #getQuestionnaireResponsesForUserWithSessionBounds(String)} but scoped
+     *  to a single session_id — used for the per-session export button on the assessment
+     *  detail screen (SessionDetailActivity), so exporting one sitting doesn't pull in the
+     *  user's entire questionnaire history. */
+    public Cursor getQuestionnaireResponsesForSessionWithBounds(String sessionId) {
+        SQLiteDatabase db = getReadableDatabase();
+        String sql = "SELECT r.user_email, r.questionnaire_type, r.session_id, r.section, " +
+                "r.question_text, r.answer, r.timestamp AS response_timestamp, " +
+                "(SELECT MIN(r2.timestamp) FROM questionnaire_responses r2 " +
+                "   WHERE r2.session_id = r.session_id) AS session_start_ms, " +
+                "(SELECT MAX(r2.timestamp) FROM questionnaire_responses r2 " +
+                "   WHERE r2.session_id = r.session_id) AS session_end_ms " +
+                "FROM questionnaire_responses r " +
+                "WHERE r.session_id = ? " +
+                "ORDER BY r.timestamp ASC";
+        return db.rawQuery(sql, new String[]{sessionId});
+    }
+
     // Method to get specific question answers for debugging
     public Map<String, Integer> getMentalHealthScreenerAnswers() {
         SQLiteDatabase db = getReadableDatabase();
@@ -787,7 +857,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 String question = cursor.getString(cursor.getColumnIndexOrThrow("question_text"));
                 int answer = cursor.getInt(cursor.getColumnIndexOrThrow("answer"));
                 answers.put(question, answer);
-                Log.d(TAG, "Question: " + question + ", Answer: " + answer);
+                // Not logging question text/answer — this is mental-health screener content.
             }
         } catch (Exception e) {
             Log.e(TAG, "Error retrieving questionnaire answers: " + e.getMessage());
@@ -825,19 +895,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String[] selectionArgs = { currentUserEmail };
 
         try (Cursor cursor = db.rawQuery(query, selectionArgs)) {
-            Log.d(TAG, "Found " + cursor.getCount() + " responses for user: " + currentUserEmail);
-
-            while (cursor.moveToNext()) {
-                long id = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
-                String section = cursor.getString(cursor.getColumnIndexOrThrow("section"));
-                String questionText = cursor.getString(cursor.getColumnIndexOrThrow("question_text"));
-                int answer = cursor.getInt(cursor.getColumnIndexOrThrow("answer"));
-                long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow("timestamp"));
-                String type = cursor.getString(cursor.getColumnIndexOrThrow("questionnaire_type"));
-
-                Log.d(TAG, "Response [" + id + "]: " + type + " - " + section +
-                        " - Q: " + questionText + " - A: " + answer + " - Time: " + timestamp);
-            }
+            // Logging only a count — not the email, and not per-row question/answer content,
+            // since this table can hold mental-health screener responses.
+            Log.d(TAG, "Found " + cursor.getCount() + " responses for current user");
         } catch (Exception e) {
             Log.e(TAG, "Error logging user responses: " + e.getMessage());
         }
@@ -910,7 +970,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         // Save the updated summary
         saveQuestionnaireSummary(summary);
 
-        Log.d(TAG, "Updated questionnaire summary for: " + currentUserEmail);
+        Log.d(TAG, "Updated questionnaire summary for current user");
     }
 
     /**
@@ -925,44 +985,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         updateQuestionnaireSummaryFromResponses();
-        Log.d(TAG, "Forced update of questionnaire summaries for: " + currentUserEmail);
+        Log.d(TAG, "Forced update of questionnaire summaries for current user");
     }
 
     /**
-     * Debug method to log the current questionnaire summary status
+     * Debug method to log the current questionnaire summary status.
+     * Deliberately logs only "filled" flags, never scores/triggered values or the user's
+     * email — PHQ-9/BDI/GAD-7/BRS scores and risk-triggered flags are clinical data and must
+     * never land in logcat, even in a debug build.
      */
     public void logQuestionnaireSummaryStatus() {
         QuestionnaireSummary summary = getQuestionnaireSummary(currentUserEmail);
         if (summary == null) {
-            Log.d(TAG, "No questionnaire summary found for: " + currentUserEmail);
+            Log.d(TAG, "No questionnaire summary found for current user");
             return;
         }
 
-        Log.d(TAG, "Questionnaire Summary for: " + summary.getUserEmail());
-        Log.d(TAG, "Mental Health Screener Scores: " +
-                "A=" + summary.getScoreA() + ", " +
-                "B=" + summary.getScoreB() + ", " +
-                "C=" + summary.getScoreC() + ", " +
-                "D=" + summary.getScoreD() + ", " +
-                "E=" + summary.getScoreE() + ", " +
-                "F=" + summary.getScoreF() + ", " +
-                "Total=" + summary.getTotalScore());
-
-        Log.d(TAG, "PHQ-9: " + (summary.isPhq9Filled() ? "Filled" : "Not Filled") +
-                ", Score=" + summary.getPhq9Score() +
-                ", Triggered=" + summary.getPhq9Triggered());
-
-        Log.d(TAG, "BDI: " + (summary.isBdiFilled() ? "Filled" : "Not Filled") +
-                ", Score=" + summary.getBdiScore() +
-                ", Triggered=" + summary.getBdiTriggered());
-
-        Log.d(TAG, "GAD-7: " + (summary.isGad7Filled() ? "Filled" : "Not Filled") +
-                ", Score=" + summary.getGad7Score() +
-                ", Triggered=" + summary.getGad7Triggered());
-
-        Log.d(TAG, "BRS: " + (summary.isBrsFilled() ? "Filled" : "Not Filled") +
-                ", Score=" + summary.getBrsScore() +
-                ", Triggered=" + summary.getBrsTriggered());
+        Log.d(TAG, "Questionnaire summary present. Filled: " +
+                "PHQ-9=" + summary.isPhq9Filled() +
+                ", BDI=" + summary.isBdiFilled() +
+                ", GAD-7=" + summary.isGad7Filled() +
+                ", BRS=" + summary.isBrsFilled());
     }
 
     // Helper method to calculate PHQ-9 score
@@ -1162,6 +1205,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * Gets every biomarker experiment for every user, not just the currently logged-in one.
+     * Used for CSV export so a single export at the end of a multi-participant testing
+     * session captures everyone's results, not just whoever happens to be logged in at
+     * export time (see VitalsCsvExporter).
+     */
+    public Cursor getAllBiomarkerExperiments() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(TABLE_BIOMARKER_EXPERIMENTS, null, null, null,
+                null, null, COLUMN_USERNAME + " ASC, " + COLUMN_TIMESTAMP + " ASC");
+    }
+
+    /** Biomarker experiments for one user within a timestamp range (inclusive) — used for
+     *  the per-day export button on PatientResultsActivity, so exporting one day's tests
+     *  doesn't pull in the patient's entire history. */
+    public Cursor getBiomarkerExperimentsForUserAndRange(String username, long startMs, long endMs) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(TABLE_BIOMARKER_EXPERIMENTS, null,
+                COLUMN_USERNAME + " = ? AND " + COLUMN_TIMESTAMP + " BETWEEN ? AND ?",
+                new String[]{username, String.valueOf(startMs), String.valueOf(endMs)},
+                null, null, COLUMN_TIMESTAMP + " ASC");
+    }
+
+    /**
      * Gets all data points for a biomarker experiment
      */
     public Cursor getBiomarkerDataForExperiment(long experimentId) {
@@ -1307,7 +1373,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         Cursor cursor = null;
         try {
             cursor = db.rawQuery(sql, new String[]{userEmail, userEmail});
-            Log.d(TAG, "getAllExperimentsForGraph - " + cursor.getCount() + " day entries for: " + userEmail);
+            Log.d(TAG, "getAllExperimentsForGraph - " + cursor.getCount() + " day entries");
 
             while (cursor.moveToNext()) {
                 long id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID));
@@ -1450,7 +1516,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 summary.setGad7Triggered(cursor.getInt(cursor.getColumnIndexOrThrow("gad7_triggered")));
                 summary.setBrsTriggered(cursor.getInt(cursor.getColumnIndexOrThrow("brs_triggered")));
 
-                Log.d(TAG, "Retrieved questionnaire summary for: " + userEmail);
+                Log.d(TAG, "Retrieved questionnaire summary");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error retrieving questionnaire summary: " + e.getMessage());
@@ -1513,11 +1579,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // Update existing record
             db.update("questionnaire_summaries", values, "user_email = ?",
                     new String[]{summary.getUserEmail()});
-            Log.d(TAG, "Updated questionnaire summary for: " + summary.getUserEmail());
+            Log.d(TAG, "Updated existing questionnaire summary");
         } else {
             // Insert new record
             db.insert("questionnaire_summaries", null, values);
-            Log.d(TAG, "Inserted new questionnaire summary for: " + summary.getUserEmail());
+            Log.d(TAG, "Inserted new questionnaire summary");
         }
     }
     private String getCurrentIsoTime() {

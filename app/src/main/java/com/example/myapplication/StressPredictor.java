@@ -40,7 +40,11 @@ import java.util.Map;
 public class StressPredictor {
 
     private static final String TAG = "StressPredictor";
-    private static final String MODEL_FILE = "random_forest_model_ir9.onnx";
+    public static final String MODEL_FILE = "random_forest_model_ir9.onnx";
+
+    private static final Object SESSION_LOCK = new Object();
+    private static OrtEnvironment ortEnvironment;
+    private static OrtSession ortSession;
 
     // Predicted class labels
     public static final int CLASS_HEALTHY  = 0;
@@ -158,13 +162,15 @@ public class StressPredictor {
                 return fallback(raw);
             }
 
-            OrtEnvironment env = OrtEnvironment.getEnvironment();
-            OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
-            OrtSession session = env.createSession(modelBytes, opts);
+            OrtSession session = getOrCreateSession(ctx, modelBytes);
+            if (session == null) {
+                Log.e(TAG, "Could not create ONNX session");
+                return fallback(raw);
+            }
 
             long[] shape = {1L, 9L};
             FloatBuffer buf = FloatBuffer.wrap(scaled);
-            OnnxTensor inputTensor = OnnxTensor.createTensor(env, buf, shape);
+            OnnxTensor inputTensor = OnnxTensor.createTensor(ortEnvironment, buf, shape);
 
             Map<String, OnnxTensor> inputs = Collections.singletonMap("float_input", inputTensor);
             OrtSession.Result ortResult = session.run(inputs);
@@ -204,8 +210,6 @@ public class StressPredictor {
 
             ortResult.close();
             inputTensor.close();
-            session.close();
-            env.close();
 
             int cls = (int) Math.max(0, Math.min(2, predictedClass));
             Log.d(TAG, "ONNX prediction: class=" + cls
@@ -219,6 +223,21 @@ public class StressPredictor {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static OrtSession getOrCreateSession(Context ctx, byte[] modelBytes) {
+        synchronized (SESSION_LOCK) {
+            if (ortSession != null) return ortSession;
+            try {
+                ortEnvironment = OrtEnvironment.getEnvironment();
+                OrtSession.SessionOptions opts = new OrtSession.SessionOptions();
+                ortSession = ortEnvironment.createSession(modelBytes, opts);
+                return ortSession;
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to create ONNX session: " + e.getMessage(), e);
+                return null;
+            }
+        }
+    }
 
     private static byte[] loadModelBytes(Context ctx) {
         try (InputStream is = ctx.getAssets().open(MODEL_FILE)) {

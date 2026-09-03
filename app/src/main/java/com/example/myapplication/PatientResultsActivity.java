@@ -1,6 +1,5 @@
 package com.example.myapplication;
 
-import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -9,7 +8,6 @@ import android.widget.ProgressBar;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import com.github.mikephil.charting.charts.LineChart;
@@ -18,8 +16,6 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
-import java.io.File;
-import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -225,45 +221,15 @@ public class PatientResultsActivity extends AppCompatActivity {
         lineChart.invalidate();
     }
 
+    /** Exports only THIS DAY's cortisol tests (the ones actually shown in the table below —
+     *  previously this exported the patient's entire history regardless of which day was
+     *  open, which didn't match what was on screen). Delegates to VitalsCsvExporter so the
+     *  CSV format (including computed test_start_ms/test_end_ms columns) stays consistent
+     *  with the rest of the app's exports instead of a separate hand-rolled 2-column file. */
     private void exportCsv() {
-        List<DatabaseHelper.BiomarkerExperimentSummary> history =
-                dbHelper.getLatestBiomarkerExperiments(patientEmail, Integer.MAX_VALUE);
-
-        if (history == null || history.isEmpty()) {
-            Toast.makeText(this, "No data to export", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        try {
-            String fileName = "cortisol_" + patientEmail + "_" + System.currentTimeMillis() + ".csv";
-            File csvFile = new File(getExternalFilesDir(null), fileName);
-            FileWriter writer = new FileWriter(csvFile);
-            writer.append("DateTime,Cortisol_ng_ml\n");
-
-            SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-            for (DatabaseHelper.BiomarkerExperimentSummary exp : history) {
-                if (exp.maxValue <= 0) continue;
-                writer.append(fmt.format(new Date(exp.timestamp)))
-                        .append(",")
-                        .append(String.format(Locale.US, "%.2f", exp.maxValue))
-                        .append("\n");
-            }
-            writer.flush();
-            writer.close();
-
-            android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
-                    this, getPackageName() + ".fileprovider", csvFile);
-
-            Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            shareIntent.setType("text/csv");
-            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
-            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(shareIntent, "Export Patient CSV"));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+        long dayStart = getStartOfDay(selectedDate);
+        long dayEnd   = getEndOfDay(selectedDate);
+        VitalsCsvExporter.exportCortisolDayAndShare(this, patientEmail, dayStart, dayEnd);
     }
 
     private void applyCortisolBadge(double cortisol) {

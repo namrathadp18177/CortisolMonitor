@@ -49,6 +49,21 @@
             android:backgroundTint="@color/primary"
             app:cornerRadius="16dp" />
 
+        <!-- Export all data -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExportAllData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Export questionnaire data"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="14sp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:strokeColor="@color/primary"
+            app:cornerRadius="16dp"
+            android:layout_marginTop="12dp" />
+
         <!-- Response History section label -->
         <TextView
             android:layout_width="match_parent"

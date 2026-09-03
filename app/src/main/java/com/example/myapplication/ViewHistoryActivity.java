@@ -23,6 +23,7 @@ public class ViewHistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requireCareProvider(this)) return;
         setContentView(R.layout.activity_view_history);
 
         // Set up toolbar with back navigation

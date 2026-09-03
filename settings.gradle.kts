@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 rootProject.name = "My Application"
 include(":app")
 include(":GraphView-master")  // Add this line to include GraphView-master
+include(":myapplication")

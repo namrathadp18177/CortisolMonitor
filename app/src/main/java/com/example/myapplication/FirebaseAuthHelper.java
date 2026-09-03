@@ -13,6 +13,7 @@ public class FirebaseAuthHelper {
     private static final String PREFS_NAME = "cortisol_prefs";
     private static final String KEY_UID = "firebase_uid";
     private static final String KEY_ROLE = "user_role";
+    private static final String KEY_EMAIL = "firebase_email";
     private static final String KEY_LAST_SYNC = "last_sync_at";
 
     private static FirebaseAuth mAuth = FirebaseAuth.getInstance();
@@ -29,12 +30,12 @@ public class FirebaseAuthHelper {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         String uid = user.getUid();
-                        Log.d(TAG, "Sign up successful. UID: " + uid);
+                        Log.d(TAG, "Sign up successful");
                         // Send a verification link to the registered email address
                         user.sendEmailVerification()
                                 .addOnCompleteListener(verificationTask -> {
                                     if (verificationTask.isSuccessful()) {
-                                        Log.d(TAG, "Verification email sent to: " + email);
+                                        Log.d(TAG, "Verification email sent");
                                     } else {
                                         Log.w(TAG, "Failed to send verification email: " +
                                                 (verificationTask.getException() != null
@@ -65,12 +66,12 @@ public class FirebaseAuthHelper {
                             FirebaseUser refreshedUser = mAuth.getCurrentUser();
                             if (refreshedUser != null && refreshedUser.isEmailVerified()) {
                                 String uid = refreshedUser.getUid();
-                                Log.d(TAG, "Login successful. UID: " + uid);
+                                Log.d(TAG, "Login successful");
                                 callback.onSuccess(uid);
                             } else {
                                 // Email not yet verified — sign out and block
                                 mAuth.signOut();
-                                Log.w(TAG, "Login blocked: email not verified for " + email);
+                                Log.w(TAG, "Login blocked: email not verified");
                                 callback.onFailure("EMAIL_NOT_VERIFIED");
                             }
                         });
@@ -95,7 +96,7 @@ public class FirebaseAuthHelper {
                                     .addOnCompleteListener(verifyTask -> {
                                         mAuth.signOut();
                                         if (verifyTask.isSuccessful()) {
-                                            Log.d(TAG, "Verification email resent to: " + email);
+                                            Log.d(TAG, "Verification email resent");
                                             callback.onSuccess(null);
                                         } else {
                                             String error = verifyTask.getException() != null
@@ -142,15 +143,22 @@ public class FirebaseAuthHelper {
     // ── Local session storage ────────────────────────────
     public static void saveSession(Context context, String uid, String role) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String email = getCurrentEmail();
         prefs.edit()
                 .putString(KEY_UID, uid)
                 .putString(KEY_ROLE, role)
+                .putString(KEY_EMAIL, email != null ? email : "")
                 .apply();
     }
 
     public static String getSavedRole(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_ROLE, null);
+    }
+
+    public static String getSavedEmail(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_EMAIL, null);
     }
 
     public static void clearLocalSession(Context context) {

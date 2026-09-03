@@ -74,7 +74,7 @@ public class ActivateAccountActivity extends AppCompatActivity {
                 if (fbUser != null) {
                     fbUser.updatePassword(pass)
                             .addOnSuccessListener(unused ->
-                                    Log.d(TAG, "Firebase password updated for: " + email))
+                                    Log.d(TAG, "Firebase password updated"))
                             .addOnFailureListener(e ->
                                     Log.w(TAG, "Firebase password update failed: " + e.getMessage()));
                 }

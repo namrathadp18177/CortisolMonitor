@@ -10,16 +10,36 @@
         android:id="@+id/tvStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="8dp"
         android:text="Scanning for devices..."
         android:textAlignment="center" />
+
+    <TextView
+        android:id="@+id/tvLocationWarning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="#FFFFCC"
+        android:padding="8dp"
+        android:text="⚠ Location Services is OFF. BLE scanning requires Location to be enabled in Settings."
+        android:textColor="#CC6600"
+        android:textAlignment="center"
+        android:visibility="gone" />
 
     <ProgressBar
         android:id="@+id/progressScanning"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnScanAgain"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="Scan Again"
+        android:visibility="gone" />
 
     <ListView
         android:id="@+id/listViewDevices"

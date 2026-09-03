@@ -36,7 +36,7 @@
                 android:layout_marginBottom="20dp"
                 android:contentDescription="Cortisol Monitor"
                 android:scaleType="fitCenter"
-                android:src="@drawable/dashboard_logo" />
+                android:src="@drawable/app_logo_thesis" />
 
             <TextView
                 android:id="@+id/tvAppName"
@@ -101,7 +101,7 @@
                     android:layout_marginBottom="28dp"
                     android:gravity="center"
                     android:lineSpacingExtra="4dp"
-                    android:text="Monitor your cortisol levels, complete assessments, and view your health insights in one place."
+                    android:text="Monitor your stress levels, complete assessments, and view your health insights in one place."
                     android:textAlignment="center"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />

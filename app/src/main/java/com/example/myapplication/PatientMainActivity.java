@@ -53,6 +53,7 @@ public class PatientMainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requirePatient(this)) return;
         setContentView(R.layout.activity_patient_main);
 
         setupToolbar();

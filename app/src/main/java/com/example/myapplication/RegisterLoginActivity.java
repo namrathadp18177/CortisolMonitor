@@ -150,16 +150,11 @@ public class RegisterLoginActivity extends AppCompatActivity {
         boolean rememberMe = prefs.getBoolean(PREF_REMEMBER, false);
         if (rememberMe) {
             String savedEmail = prefs.getString(PREF_EMAIL, "");
-            String savedPassword = prefs.getString(PREF_PASSWORD, "");
-            if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+            if (!savedEmail.isEmpty()) {
                 etEmail.setText(savedEmail);
-                etPassword.setText(savedPassword);
                 cbRememberMe.setChecked(true);
-                // Auto-login — user should not have to press Login again
-                btnSubmit.setEnabled(false);
-                btnSubmit.setText("Logging in...");
-                handleLogin(savedEmail, savedPassword);
             }
+            prefs.edit().remove(PREF_PASSWORD).apply();
         }
     }
 
@@ -436,28 +431,35 @@ public class RegisterLoginActivity extends AppCompatActivity {
                 .collection("profile").document("data")
                 .get()
                 .addOnSuccessListener(doc -> {
+                    if (doc == null || !doc.exists()) {
+                        btnSubmit.setEnabled(true);
+                        btnSubmit.setText("Login");
+                        Toast.makeText(RegisterLoginActivity.this,
+                                "Account profile not found. Check your connection or contact the study coordinator.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
                     String role = "PATIENT";
-                    if (doc != null && doc.exists()) {
-                        String firestoreRole = doc.getString("role");
-                        if ("CARE_PROVIDER".equals(firestoreRole)) {
-                            role = "CARE_PROVIDER";
-                            // Restore the CP record to SQLite so future logins work without
-                            // needing another Firestore round-trip.
-                            String name      = doc.getString("name");
-                            String medicalId = doc.getString("medical_id");
-                            if (name != null && medicalId != null
-                                    && !name.isEmpty() && !medicalId.isEmpty()) {
-                                userDbHelper.registerCareProvider(name, medicalId, email, password);
-                            }
+                    String firestoreRole = doc.getString("role");
+                    String name = doc.getString("name");
+                    String medicalId = doc.getString("medical_id");
+                    if ("CARE_PROVIDER".equals(firestoreRole)
+                            || (firestoreRole == null && medicalId != null && !medicalId.isEmpty())) {
+                        role = "CARE_PROVIDER";
+                        if (name != null && medicalId != null
+                                && !name.isEmpty() && !medicalId.isEmpty()) {
+                            userDbHelper.registerCareProvider(name, medicalId, email, password);
                         }
                     }
                     finishLogin(uid, email, password, role);
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Firestore role fetch failed: " + e.getMessage());
-                    // Cannot determine role — default to PATIENT and let the normal
-                    // demographic-data check run. The user can contact support if needed.
-                    finishLogin(uid, email, password, "PATIENT");
+                    btnSubmit.setEnabled(true);
+                    btnSubmit.setText("Login");
+                    Toast.makeText(RegisterLoginActivity.this,
+                            "Could not determine account type. Check your connection and try again.",
+                            Toast.LENGTH_LONG).show();
                 });
     }
 
@@ -492,7 +494,7 @@ public class RegisterLoginActivity extends AppCompatActivity {
         if (cbRememberMe.isChecked()) {
             editor.putBoolean(PREF_REMEMBER, true);
             editor.putString(PREF_EMAIL, email);
-            editor.putString(PREF_PASSWORD, password);
+            editor.remove(PREF_PASSWORD);
         } else {
             editor.putBoolean(PREF_REMEMBER, false);
             editor.remove(PREF_EMAIL);

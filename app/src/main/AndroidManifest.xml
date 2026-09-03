@@ -14,10 +14,14 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /> <!-- USB Permissions -->
-    <uses-feature android:name="android.hardware.usb.host" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
 
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <uses-permission android:name="android.permission.USB_PERMISSION" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -52,17 +56,22 @@
             android:name=".QuestionnaireMain"
             android:exported="false" />
 
+        <!-- Not exported: every caller in this app launches it via an explicit Intent
+             (see HomeFragment, EditPatientActivity, ModifyPatientActivity,
+             QuestionnaireResultsActivity, RegisterPatientActivity — none rely on an
+             implicit-intent / deep-link entry point). It previously had an unrestricted
+             exported ACTION_VIEW filter, which let any app on the device launch it directly
+             with an arbitrary user_role/user_email, bypassing login and attributing a
+             biomarker test to any patient email of the caller's choosing. -->
         <activity
             android:name=".BiomarkerInstructions"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
 
         <activity
             android:name=".BiomarkerActivty"
+            android:exported="false" />
+        <activity
+            android:name=".WebViewActivity"
             android:exported="false" />
 
 
@@ -168,6 +177,48 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Receives HRV (heart rate + IBI) / EDA / skin-temp batches pushed from the
+             Wear OS watch module (:myapplication) over the Data Layer MessageClient. -->
+        <service
+            android:name=".WatchDataListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/vitals" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".VitalsIngestService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <activity
+            android:name=".LiveVitalsActivity"
+            android:exported="false"
+            android:label="Live Watch Vitals" />
+
+        <activity
+            android:name=".VitalsSessionHistoryActivity"
+            android:exported="false"
+            android:label="Watch Session History" />
+
+        <activity
+            android:name=".VitalsSessionDetailActivity"
+            android:exported="false" />
+
+        <!-- Day-wise history + graph for one vital (heart rate/HRV, EDA, skin temperature),
+             reached by tapping the corresponding card on LiveVitalsActivity. -->
+        <activity
+            android:name=".VitalsDayListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".VitalsDayDetailActivity"
+            android:exported="false" />
 
     </application>
 

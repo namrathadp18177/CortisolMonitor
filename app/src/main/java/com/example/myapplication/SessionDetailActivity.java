@@ -54,6 +54,12 @@ public class SessionDetailActivity extends AppCompatActivity {
 
         rvResponses.setLayoutManager(new LinearLayoutManager(this));
 
+        String sessionIdForExport = getIntent().getStringExtra("session_id");
+        findViewById(R.id.btnExportSession).setOnClickListener(v -> {
+            if (sessionIdForExport == null || sessionIdForExport.isEmpty()) return;
+            VitalsCsvExporter.exportQuestionnaireSessionAndShare(this, sessionIdForExport);
+        });
+
         executor = Executors.newSingleThreadExecutor();
         loadResponses();
     }

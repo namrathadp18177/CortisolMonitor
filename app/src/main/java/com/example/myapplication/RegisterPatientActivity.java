@@ -1,7 +1,6 @@
 package com.example.myapplication;
 
 import android.app.DatePickerDialog;
-import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -17,8 +16,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
+
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.UUID;
 
 public class RegisterPatientActivity extends AppCompatActivity {
 
@@ -43,6 +47,7 @@ public class RegisterPatientActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requireCareProvider(this)) return;
         setContentView(R.layout.activity_register_new_patient);
 
         dbHelper = UserDatabaseHelper.getInstance(this);
@@ -175,14 +180,13 @@ public class RegisterPatientActivity extends AppCompatActivity {
         }
 
         boolean userExists = dbHelper.checkUserExists(email);
+        String placeholderPassword = UUID.randomUUID() + "Aa1!";
 
         if (!userExists) {
-            String autoPassword = "Temp123!";
             String race = "Unknown";
-
             long newId = dbHelper.registerUser(
                     email,
-                    autoPassword,
+                    placeholderPassword,
                     dob,
                     sex,
                     race,
@@ -220,13 +224,62 @@ public class RegisterPatientActivity extends AppCompatActivity {
                 medicalConditions
         );
 
-        Toast.makeText(this, "Patient ID: " + patientId, Toast.LENGTH_LONG).show();
+        btnRegister.setEnabled(false);
+        provisionFirebasePatient(email, placeholderPassword, patientId);
+    }
 
-// Start biomarker for this patient as CARE_PROVIDER
-        Intent intent = new Intent(this, BiomarkerInstructions.class);
-        intent.putExtra("user_email", email);              // patient’s email
-        intent.putExtra("user_role", "CARE_PROVIDER");     // provider role
-        startActivity(intent);
+    /**
+     * Creates a Firebase Auth user on a secondary FirebaseApp so the care provider
+     * session is not replaced. The patient sets their own password via the reset email.
+     */
+    private void provisionFirebasePatient(String email, String placeholderPassword, String patientId) {
+        try {
+            FirebaseApp secondary;
+            try {
+                secondary = FirebaseApp.getInstance("patientProvisioning");
+            } catch (IllegalStateException e) {
+                secondary = FirebaseApp.initializeApp(
+                        getApplicationContext(),
+                        FirebaseApp.getInstance().getOptions(),
+                        "patientProvisioning");
+            }
+            FirebaseAuth secondaryAuth = FirebaseAuth.getInstance(secondary);
+            secondaryAuth.createUserWithEmailAndPassword(email, placeholderPassword)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            secondaryAuth.sendPasswordResetEmail(email);
+                            if (secondaryAuth.getCurrentUser() != null) {
+                                secondaryAuth.getCurrentUser().sendEmailVerification();
+                            }
+                            secondaryAuth.signOut();
+                            finishRegistration(patientId,
+                                    "Patient ID: " + patientId
+                                            + "\nA password-reset email was sent so they can log in as themselves.");
+                        } else {
+                            Exception ex = task.getException();
+                            secondaryAuth.signOut();
+                            if (ex instanceof FirebaseAuthUserCollisionException) {
+                                finishRegistration(patientId,
+                                        "Patient ID: " + patientId
+                                                + "\nThis email already has a login; they can sign in with that account.");
+                            } else {
+                                finishRegistration(patientId,
+                                        "Patient ID: " + patientId
+                                                + "\nSaved locally. Cloud login could not be created — try again when online.");
+                            }
+                        }
+                    });
+        } catch (Exception e) {
+            finishRegistration(patientId,
+                    "Patient ID: " + patientId
+                            + "\nSaved locally. Cloud login could not be created.");
+        }
+    }
+
+    private void finishRegistration(String patientId, String message) {
+        btnRegister.setEnabled(true);
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        finish();
     }
 
     @Override

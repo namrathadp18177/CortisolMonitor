@@ -1,0 +1,13 @@
+session_id,participant_email,window_start_ms,window_end_ms,n_samples,expected_samples,coverage,mag_mean_g,mag_std_g,motion_flag,low_confidence
+demo_session_1,demo@example.com,1756000000000.0,1756000005000.0,125,125,1.0,1.0001,0.0091,False,False
+demo_session_1,demo@example.com,1756000005000.0,1756000010000.0,125,125,1.0,0.9994,0.01,False,False
+demo_session_1,demo@example.com,1756000010000.0,1756000015000.0,125,125,1.0,0.9996,0.0092,False,False
+demo_session_1,demo@example.com,1756000015000.0,1756000020000.0,125,125,1.0,0.9999,0.0102,False,False
+demo_session_1,demo@example.com,1756000020000.0,1756000025000.0,125,125,1.0,0.999,0.0107,False,False
+demo_session_1,demo@example.com,1756000025000.0,1756000030000.0,125,125,1.0,0.9988,0.0106,False,False
+demo_session_1,demo@example.com,1756000030000.0,1756000035000.0,125,125,1.0,1.1357,0.3012,True,False
+demo_session_1,demo@example.com,1756000035000.0,1756000040000.0,125,125,1.0,1.0876,0.2642,True,False
+demo_session_1,demo@example.com,1756000040000.0,1756000045000.0,125,125,1.0,1.0847,0.2686,True,False
+demo_session_1,demo@example.com,1756000045000.0,1756000050000.0,125,125,1.0,0.9998,0.0102,False,False
+demo_session_1,demo@example.com,1756000050000.0,1756000055000.0,125,125,1.0,0.9989,0.0098,False,False
+demo_session_1,demo@example.com,1756000055000.0,1756000060000.0,125,125,1.0,0.9993,0.0099,False,False

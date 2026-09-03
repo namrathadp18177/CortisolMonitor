@@ -46,6 +46,9 @@ public class FinalResultsActivity extends AppCompatActivity {
         historyContainer = findViewById(R.id.historyContainer);
         tvEmptyState     = findViewById(R.id.tvEmptyState);
 
+        findViewById(R.id.btnExportAllData).setOnClickListener(v ->
+                VitalsCsvExporter.exportAndShare(this));
+
         loadHistory();
     }
 
@@ -66,14 +69,8 @@ public class FinalResultsActivity extends AppCompatActivity {
         String historyRaw = prefs.getString(username + "_history", "");
 
         if (historyRaw.isEmpty()) {
-            // Try to seed from existing AssessmentResults / BiomarkerResults data
-            if (seedFromExistingData(username)) {
-                historyRaw = prefs.getString(username + "_history", "");
-            }
-            if (historyRaw.isEmpty()) {
-                tvEmptyState.setVisibility(View.VISIBLE);
-                return;
-            }
+            tvEmptyState.setVisibility(View.VISIBLE);
+            return;
         }
 
         // Collect all valid result IDs

@@ -119,6 +119,15 @@ public class HomeFragment extends Fragment {
                         "DHEA Test coming in a future update",
                         Snackbar.LENGTH_SHORT).show()
         );
+
+        // Watch Vitals card — opens the live HRV/EDA/skin-temp screen fed by the watch app
+        MaterialButton btnLiveVitals = root.findViewById(R.id.btnViewLiveVitals);
+        if (btnLiveVitals != null) {
+            btnLiveVitals.setOnClickListener(v -> {
+                if (!isAdded()) return;
+                startActivity(new Intent(requireActivity(), LiveVitalsActivity.class));
+            });
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

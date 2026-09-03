@@ -97,6 +97,12 @@ public class QuestionnairesFragment extends Fragment {
     private void setupClickListeners(View root) {
         MaterialButton btnBegin = root.findViewById(R.id.btnBeginAssessment);
         btnBegin.setOnClickListener(v -> launchQuestionnaireMain());
+
+        MaterialButton btnExport = root.findViewById(R.id.btnExportAllData);
+        btnExport.setOnClickListener(v -> {
+            if (!isAdded()) return;
+            VitalsCsvExporter.exportQuestionnaireAndShare(requireActivity());
+        });
     }
 
     private void launchQuestionnaireMain() {
