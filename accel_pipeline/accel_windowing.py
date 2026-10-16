@@ -145,10 +145,12 @@ def summarize(windows, min_coverage=MIN_COVERAGE_DEFAULT):
 
 def make_synthetic_demo():
     """Builds a small, clearly-labeled SYNTHETIC session (not real watch data):
-    30s stationary, 15s simulated walking, 15s stationary again, at 25 Hz --
-    just enough to sanity-check the windowing/flagging logic end-to-end before
-    any real watch export exists. The '_label' column is dropped before the
-    frame is fed through the same code path a real accel_*.csv would use."""
+    5min stationary, 2min simulated walking, 3min stationary again (10 minutes
+    total -- extended from an earlier 1-minute version so the demo/dashboards
+    have enough elapsed time to look like an actual session), at 25 Hz -- just
+    enough to sanity-check the windowing/flagging logic end-to-end before any
+    real watch export exists. The '_label' column is dropped before the frame
+    is fed through the same code path a real accel_*.csv would use."""
     rng = np.random.default_rng(42)
     rate_hz = NOMINAL_RATE_HZ
     t0 = 1_756_000_000_000  # arbitrary epoch ms
@@ -178,9 +180,9 @@ def make_synthetic_demo():
             })
             t += round(1000 / rate_hz)
 
-    add_segment(30, 0.01, "stationary")
-    add_segment(15, 0.30, "walking")
-    add_segment(15, 0.01, "stationary")
+    add_segment(300, 0.01, "stationary")
+    add_segment(120, 0.30, "walking")
+    add_segment(180, 0.01, "stationary")
     return pd.DataFrame(rows)
 
 

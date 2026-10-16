@@ -13,3 +13,28 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.gradle/
+build/
+**/build/
+*.zip
+*.csv
+*.xlsx
+*.parquet
+*.db
+
+Real watch data/
+Results/
+Claude outputs/
+
+accel_pipeline/fixture/
+accel_pipeline/synth_test/
+accel_pipeline/synth_v2_out/
+accel_pipeline/synthetic_diurnal_test/
+accel_pipeline/test_run/
+accel_pipeline/pipeline_test_sep28/
+accel_pipeline/classifier_v3_results/
