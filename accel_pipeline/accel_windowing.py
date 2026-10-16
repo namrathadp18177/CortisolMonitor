@@ -97,9 +97,17 @@ def compute_windows(df, window_sec=WINDOW_SEC_DEFAULT,
     rows = []
     for session_id, g in df.groupby("session_id", sort=False):
         g = g.sort_values("timestamp_ms").drop_duplicates(subset=["timestamp_ms"])
-        session_start_ms = g["timestamp_ms"].iloc[0]
         participant_email = g["participant_email"].iloc[0]
-        window_idx = ((g["timestamp_ms"] - session_start_ms) // window_ms).astype(int)
+        # Window boundaries are anchored to ABSOLUTE clock time (every window_ms since
+        # epoch), not to this session's own first sample -- so HRV/EDA/skin-temp/accel
+        # windows covering the same real moment land on IDENTICAL window_start_ms values
+        # across every sensor and every windowing script, instead of each sensor drifting by
+        # however many ms its own first sample happened to differ by (audit finding:
+        # "union grid still combines independently anchored window starts"). The session's
+        # first/last window can be shorter than window_sec as a result (it rarely starts
+        # exactly on a grid boundary) -- n_samples/coverage/low_confidence already handle a
+        # partial window correctly, same as any other low-coverage window.
+        window_idx = (g["timestamp_ms"] // window_ms).astype(int)
         for idx, wdf in g.groupby(window_idx):
             n = len(wdf)
             mag_mean = wdf["mag_g"].mean()
@@ -108,8 +116,8 @@ def compute_windows(df, window_sec=WINDOW_SEC_DEFAULT,
             rows.append({
                 "session_id": session_id,
                 "participant_email": participant_email,
-                "window_start_ms": session_start_ms + idx * window_ms,
-                "window_end_ms": session_start_ms + (idx + 1) * window_ms,
+                "window_start_ms": idx * window_ms,
+                "window_end_ms": (idx + 1) * window_ms,
                 "n_samples": n,
                 "expected_samples": round(expected_samples),
                 "coverage": round(coverage, 3),

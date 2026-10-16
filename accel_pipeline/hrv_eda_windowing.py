@@ -261,22 +261,42 @@ def _filter_plausible_ibis(ibi_ms):
     remaining sequence (in arrival order) by rejecting any beat that jumps more than
     IBI_MAX_RELATIVE_JUMP from the last ACCEPTED beat -- a single corrupted IBI sample
     (sensor glitch, double-counted beat) would otherwise distort RMSSD/SDNN far more
-    than its one-sample share should. Returns (filtered_list, n_rejected). This runs
-    AFTER _parse_valid_ibis' own status==0 filter -- the device's own status flag and
-    this plausibility check catch different failure modes (status flags a sample the
-    sensor itself didn't trust; this catches a sample the sensor trusted but that is
-    still physiologically impossible or a wild outlier relative to its neighbours)."""
-    n_in = len(ibi_ms)
-    range_ok = [v for v in ibi_ms if IBI_MIN_PLAUSIBLE_MS <= v <= IBI_MAX_PLAUSIBLE_MS]
+    than its one-sample share should. This runs AFTER _parse_valid_ibis' own status==0
+    filter -- the device's own status flag and this plausibility check catch different
+    failure modes (status flags a sample the sensor itself didn't trust; this catches a
+    sample the sensor trusted but that is still physiologically impossible or a wild
+    outlier relative to its neighbours).
 
-    filtered = []
+    Returns (list_of_runs, n_rejected) -- NOT a single flat list. A run breaks at every
+    rejected beat (range violation or despike), not just at sensor-level gaps (that part
+    is _split_into_runs' job, upstream of this function): the accepted beats immediately
+    before and after a rejected one are not truly successive, so a diff across that gap
+    would measure the sum of (at least) two real beat intervals, not one true
+    beat-to-beat interval -- the same reasoning _split_into_runs applies to dropouts,
+    applied here to an individually-rejected beat in the middle of an otherwise-good
+    stretch. last_accepted also resets on a rejection, since the next beat has no known
+    time relationship to a beat that no longer has an accepted beat directly before it."""
+    n_in = len(ibi_ms)
+    runs = []
+    current = []
     last_accepted = None
-    for v in range_ok:
-        if last_accepted is None or abs(v - last_accepted) / last_accepted <= IBI_MAX_RELATIVE_JUMP:
-            filtered.append(v)
+    for v in ibi_ms:
+        in_range = IBI_MIN_PLAUSIBLE_MS <= v <= IBI_MAX_PLAUSIBLE_MS
+        accepted = in_range and (
+            last_accepted is None or abs(v - last_accepted) / last_accepted <= IBI_MAX_RELATIVE_JUMP
+        )
+        if accepted:
+            current.append(v)
             last_accepted = v
-        # else: rejected as a despike outlier relative to the last accepted beat
-    return filtered, n_in - len(filtered)
+        else:
+            if current:
+                runs.append(current)
+                current = []
+            last_accepted = None  # a rejected beat severs the "last accepted" chain too
+    if current:
+        runs.append(current)
+    n_accepted = sum(len(r) for r in runs)
+    return runs, n_in - n_accepted
 
 
 def _hrv_metrics(ibi_runs):
@@ -334,26 +354,33 @@ def compute_hrv_windows(df, window_sec=WINDOW_SEC_DEFAULT,
     rows = []
     for session_id, g in df.groupby("session_id", sort=False):
         g = g.sort_values("timestamp_ms").drop_duplicates(subset=["timestamp_ms"])
-        session_start_ms = g["timestamp_ms"].iloc[0]
         participant_email = g["participant_email"].iloc[0]
-        window_idx = ((g["timestamp_ms"] - session_start_ms) // window_ms).astype(int)
+        # Window boundaries are anchored to ABSOLUTE clock time (every window_ms since
+        # epoch), not to this session's own first sample -- so HRV/EDA/skin-temp/accel
+        # windows covering the same real moment land on IDENTICAL window_start_ms values
+        # across every sensor and every windowing script, instead of each sensor drifting by
+        # however many ms its own first sample happened to differ by (audit finding:
+        # "union grid still combines independently anchored window starts"). The session's
+        # first/last window can be shorter than window_sec as a result (it rarely starts
+        # exactly on a grid boundary) -- n_samples/coverage/low_confidence already handle a
+        # partial window correctly, same as any other low-coverage window.
+        window_idx = (g["timestamp_ms"] // window_ms).astype(int)
         for idx, wdf in g.groupby(window_idx):
             n_hr_samples = len(wdf)
             coverage = n_hr_samples / expected_samples
             ibi_runs_raw = _split_into_runs(wdf)
             ibi_runs, n_rejected = [], 0
             for run in ibi_runs_raw:
-                filtered_run, n_rej_run = _filter_plausible_ibis(run)
+                filtered_sub_runs, n_rej_run = _filter_plausible_ibis(run)
                 n_rejected += n_rej_run
-                if filtered_run:
-                    ibi_runs.append(filtered_run)
+                ibi_runs.extend(filtered_sub_runs)  # each rejection can split one run into several
             metrics = _hrv_metrics(ibi_runs)
             low_confidence = bool(metrics["beat_count"] < hrv_min_beats or coverage < min_coverage)
             row = {
                 "session_id": session_id,
                 "participant_email": participant_email,
-                "window_start_ms": session_start_ms + idx * window_ms,
-                "window_end_ms": session_start_ms + (idx + 1) * window_ms,
+                "window_start_ms": idx * window_ms,
+                "window_end_ms": (idx + 1) * window_ms,
                 "n_hr_samples": n_hr_samples,
                 "expected_hr_samples": round(expected_samples),
                 "sample_coverage": round(coverage, 3),
@@ -558,9 +585,17 @@ def compute_eda_windows(df, window_sec=WINDOW_SEC_DEFAULT, min_coverage=MIN_COVE
     rows = []
     for session_id, g in df.groupby("session_id", sort=False):
         g = g.sort_values("timestamp_ms").drop_duplicates(subset=["timestamp_ms"]).reset_index(drop=True)
-        session_start_ms = g["timestamp_ms"].iloc[0]
         participant_email = g["participant_email"].iloc[0]
-        window_idx = ((g["timestamp_ms"] - session_start_ms) // window_ms).astype(int)
+        # Window boundaries are anchored to ABSOLUTE clock time (every window_ms since
+        # epoch), not to this session's own first sample -- so HRV/EDA/skin-temp/accel
+        # windows covering the same real moment land on IDENTICAL window_start_ms values
+        # across every sensor and every windowing script, instead of each sensor drifting by
+        # however many ms its own first sample happened to differ by (audit finding:
+        # "union grid still combines independently anchored window starts"). The session's
+        # first/last window can be shorter than window_sec as a result (it rarely starts
+        # exactly on a grid boundary) -- n_samples/coverage/low_confidence already handle a
+        # partial window correctly, same as any other low-coverage window.
+        window_idx = (g["timestamp_ms"] // window_ms).astype(int)
 
         if decompose:
             tonic_full, phasic_full, scr_events = _decompose_eda_session(
@@ -608,8 +643,8 @@ def compute_eda_windows(df, window_sec=WINDOW_SEC_DEFAULT, min_coverage=MIN_COVE
             rows.append({
                 "session_id": session_id,
                 "participant_email": participant_email,
-                "window_start_ms": session_start_ms + idx * window_ms,
-                "window_end_ms": session_start_ms + (idx + 1) * window_ms,
+                "window_start_ms": idx * window_ms,
+                "window_end_ms": (idx + 1) * window_ms,
                 "n_samples": n,
                 "expected_samples": round(expected_samples),
                 "coverage": round(coverage, 3),

@@ -150,6 +150,14 @@ def main():
                      help="legacy fixed-offset mode (e.g. -4 for EDT). WARNING: wrong for any data "
                           "collected across a DST transition (US DST ends Nov 1, 2026) -- prefer --tz")
     ap.add_argument("--tolerance-min", type=float, default=15.0, help="how close (minutes) a window's time-of-day must be to a cortisol sample's clock time to be matched")
+    ap.add_argument("--match-mode", choices=["auto", "pooled", "session"], default="auto",
+                     help="'auto' (default): use session_id-scoped matching for any cortisol row "
+                          "that has one, fall back to pooled (day-agnostic) matching for rows that "
+                          "don't -- can silently mix both per row. 'pooled': always ignore "
+                          "session_id, even if the column exists -- the explicit single-cortisol- "
+                          "test mode. 'session': every cortisol row MUST have a non-null session_id "
+                          "-- the explicit multi-day/multi-session mode; errors out instead of "
+                          "silently pooling a row that's missing one.")
     ap.add_argument("--out", default="diurnal_correlation_result.csv")
     args = ap.parse_args()
 
@@ -180,7 +188,19 @@ def main():
                     "hrv_mean_hr_bpm", "hrv_rmssd"]
     feature_cols = [c for c in feature_cols if c in merged.columns]
 
-    has_session_scoping = "session_id" in cortisol.columns
+    has_session_col = "session_id" in cortisol.columns
+    if args.match_mode == "session":
+        if not has_session_col or cortisol["session_id"].isna().any():
+            missing = cortisol[~cortisol.get("session_id", pd.Series(dtype=object)).notna()] \
+                if has_session_col else cortisol
+            ap.error("--match-mode session requires every cortisol row to have a non-null "
+                      f"session_id; {len(missing)} row(s) don't (labels: "
+                      f"{missing['label'].tolist() if 'label' in missing.columns else '?'}). "
+                      "Fix the CSV, or pass --match-mode pooled/auto instead.")
+    elif args.match_mode == "pooled" and has_session_col:
+        print("NOTE: --match-mode pooled -- ignoring the session_id column present in "
+              "--cortisol; every row is matched day-agnostically across all of --merged.",
+              file=sys.stderr)
 
     rows = []
     for _, crow in cortisol.iterrows():
@@ -189,12 +209,18 @@ def main():
         candidates = merged[delta <= args.tolerance_min]
         # session_id present -> this cortisol sample belongs to one specific day's
         # recording; narrow the match to that session instead of pooling every day
-        # that happens to share this clock time (see module docstring).
-        if has_session_scoping and pd.notna(crow.get("session_id")):
+        # that happens to share this clock time (see module docstring). --match-mode
+        # makes this explicit instead of silently inferred per row (audit finding:
+        # "diurnal matching still allows unscoped pooling").
+        use_session_scope = (
+            args.match_mode == "session"
+            or (args.match_mode == "auto" and has_session_col and pd.notna(crow.get("session_id")))
+        )
+        if use_session_scope:
             candidates = candidates[candidates["session_id"] == crow["session_id"]]
         row = {"label": crow["label"], "clock_time": crow["clock_time"],
                "cortisol_value": crow["cortisol_value"], "n_windows_matched": len(candidates)}
-        if has_session_scoping and pd.notna(crow.get("session_id")):
+        if use_session_scope:
             row["session_id"] = crow["session_id"]
         for c in feature_cols:
             low_conf_col = _low_confidence_col_for(c)
