@@ -44,8 +44,27 @@ cortisol_samples.csv columns:
           midday,      12:30,  0.11
           evening,     20:00,  0.08
 
+    An optional `session_id` column may be added when a cortisol sample is tied to a
+    SPECIFIC day/session's recording (e.g. November's daily-cortisol-per-participant
+    protocol) -- that sample is then matched ONLY to windows from that exact session,
+    not pooled across every other day too. Without `session_id` (the single self-test
+    case -- one cortisol test compared against several days of wearable wear, which is
+    what this script was originally built for), matching stays day-agnostic/pooled as
+    before, since there's no day-specific cortisol value to match a specific day
+    against in the first place -- but in that case there is also only ONE cortisol row
+    per label, which means the "residual" correlation below is mathematically
+    guaranteed to be exactly 0 for every feature (a single-row group has no cross-day
+    mean to differ from) -- this script now says so explicitly rather than silently
+    printing a 0.000 that could be misread as "no relationship found."
+
+LOW-CONFIDENCE WINDOWS: a window flagged hrv_low_confidence (too few valid beats) or
+eda_low_confidence (too little EDA coverage) is excluded before averaging that
+signal's own feature columns -- the unreliable reading no longer silently pulls the
+label average in whatever direction it happens to be wrong in.
+
 Merged window CSV(s): output of merge_windows.py (one or more files/sessions;
-multiple days are just concatenated here, matched by time-of-day only).
+multiple days are just concatenated here, matched by time-of-day only, unless
+cortisol_samples.csv's session_id column narrows a given label to one session).
 """
 import argparse
 import sys
@@ -69,6 +88,16 @@ def time_of_day_minutes_fixed_offset(ts_ms, tz_offset_hours):
 def clock_to_minutes(hhmm):
     h, m = hhmm.split(":")
     return int(h) * 60 + int(m)
+
+
+def _low_confidence_col_for(feature_col):
+    """Maps a feature column to its companion *_low_confidence column, if the merged
+    table has one -- "hrv_rmssd" -> "hrv_low_confidence", "eda_mean" -> "eda_low_confidence".
+    Returns None if the feature doesn't have a recognized hrv_/eda_/skintemp_ prefix."""
+    for prefix in ("hrv_", "eda_", "skintemp_"):
+        if feature_col.startswith(prefix):
+            return f"{prefix}low_confidence"
+    return None
 
 
 def add_residual_columns(result, feature_cols):
@@ -102,6 +131,9 @@ def print_correlations(result, feature_cols, resid=False):
         sub = result[[cort_col, f"{c}{suffix}"]].dropna()
         if len(sub) < 3:
             print(f"{c:18s}: n too small ({len(sub)})")
+            continue
+        if sub[cort_col].std() == 0 or sub[f"{c}{suffix}"].std() == 0:
+            print(f"{c:18s}: n/a -- zero variance (degenerate residual; see NOTE above)  n={len(sub)}")
             continue
         pear = sub[cort_col].corr(sub[f"{c}{suffix}"], method="pearson")
         print(f"{c:18s}: pearson={pear:+.3f}  n={len(sub)}")
@@ -148,19 +180,42 @@ def main():
                     "hrv_mean_hr_bpm", "hrv_rmssd"]
     feature_cols = [c for c in feature_cols if c in merged.columns]
 
+    has_session_scoping = "session_id" in cortisol.columns
+
     rows = []
     for _, crow in cortisol.iterrows():
         delta = (merged["tod_min"] - crow["tod_min"]).abs()
         delta = np.minimum(delta, 1440 - delta)  # wrap around midnight
-        match = merged[delta <= args.tolerance_min]
+        candidates = merged[delta <= args.tolerance_min]
+        # session_id present -> this cortisol sample belongs to one specific day's
+        # recording; narrow the match to that session instead of pooling every day
+        # that happens to share this clock time (see module docstring).
+        if has_session_scoping and pd.notna(crow.get("session_id")):
+            candidates = candidates[candidates["session_id"] == crow["session_id"]]
         row = {"label": crow["label"], "clock_time": crow["clock_time"],
-               "cortisol_value": crow["cortisol_value"], "n_windows_matched": len(match)}
+               "cortisol_value": crow["cortisol_value"], "n_windows_matched": len(candidates)}
+        if has_session_scoping and pd.notna(crow.get("session_id")):
+            row["session_id"] = crow["session_id"]
         for c in feature_cols:
+            low_conf_col = _low_confidence_col_for(c)
+            match = candidates
+            if low_conf_col and low_conf_col in candidates.columns:
+                match = candidates[candidates[low_conf_col] != True]  # noqa: E712 (NaN-safe != True)
             row[c] = match[c].mean() if len(match) else np.nan
         rows.append(row)
 
     result = pd.DataFrame(rows)
     result = add_residual_columns(result, feature_cols)
+
+    rows_per_label = result.groupby("label").size()
+    if (rows_per_label <= 1).all():
+        print("\nNOTE: every label has exactly one cortisol row (no session_id-scoped repeats "
+              "across different days/sessions) -- the \"residual\" correlation below is "
+              "mathematically guaranteed to be 0 for every feature (nothing to subtract a "
+              "cross-day mean from) and should not be read as \"no relationship.\" It only "
+              "becomes meaningful once cortisol_samples.csv has more than one row for the same "
+              "label, each tagged with its own session_id -- e.g. several days of daily cortisol "
+              "draws from the same participant at the same clock-time label.", file=sys.stderr)
     result.to_csv(args.out, index=False)
     print(f"Wrote {len(result)} matched cortisol timepoint(s) -> {args.out}")
     print()

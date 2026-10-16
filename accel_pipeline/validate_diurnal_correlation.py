@@ -40,6 +40,15 @@ def local_datetime(ts_ms, tz_name, tz_offset_hours):
     return pd.to_datetime(ts_ms, unit="ms") + pd.Timedelta(hours=tz_offset_hours)
 
 
+def _low_confidence_col_for(feature_col):
+    """Maps a feature column to its companion *_low_confidence column, if the merged
+    table has one -- see diurnal_correlation.py's own copy of this helper."""
+    for prefix in ("hrv_", "eda_", "skintemp_"):
+        if feature_col.startswith(prefix):
+            return f"{prefix}low_confidence"
+    return None
+
+
 def add_residual_columns(result, feature_cols):
     """Subtracts each label's own cross-day mean from cortisol_value and every
     feature column -- see module docstring. This is the demeaning step that
@@ -113,10 +122,14 @@ def main():
         target_min = clock_to_minutes(c["clock_time"])
         delta = (day_data["local_minutes"] - target_min).abs()
         delta = np.minimum(delta, 1440 - delta)
-        match = day_data[delta <= args.tolerance_min]
+        candidates = day_data[delta <= args.tolerance_min]
         row = {"day": c["day"], "label": c["label"], "clock_time": c["clock_time"],
-               "cortisol_value": c["cortisol_value"], "n_windows_matched": len(match)}
+               "cortisol_value": c["cortisol_value"], "n_windows_matched": len(candidates)}
         for f in feature_cols:
+            low_conf_col = _low_confidence_col_for(f)
+            match = candidates
+            if low_conf_col and low_conf_col in candidates.columns:
+                match = candidates[candidates[low_conf_col] != True]  # noqa: E712 (NaN-safe != True)
             row[f] = match[f].mean() if len(match) else np.nan
         rows.append(row)
 

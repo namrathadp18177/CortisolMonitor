@@ -215,6 +215,47 @@ def _parse_valid_ibis(ibi_list_str, ibi_status_str):
     return [ibi for ibi, status in zip(ibis, statuses) if status == 0]
 
 
+RUN_MAX_GAP_FACTOR = 1.5          # a run of successive beats breaks whenever the gap to the
+                                  # next 1-second HR sample exceeds this factor x the nominal
+                                  # sample interval, OR the previous sample had zero valid
+                                  # beats -- RMSSD/pNN50 are defined on SUCCESSIVE beats, so
+                                  # diffing across a dropout/rejected-sample gap would measure
+                                  # elapsed real time, not a true beat-to-beat interval (audit
+                                  # finding: "HRV outlier removal can join beats across
+                                  # rejected intervals")
+
+
+def _split_into_runs(wdf, nominal_dt_ms=None):
+    """Splits a window'''s per-second HR rows (already sorted by timestamp_ms) into
+    contiguous beat runs: within a run, every row directly follows the previous one
+    (gap <= RUN_MAX_GAP_FACTOR x the nominal sample interval) AND the previous row had
+    at least one valid beat. A run breaks before any row where either condition fails,
+    since the first beat after a dropout/rejected-sample gap is not actually the next
+    heartbeat after whatever beat came before the gap. Returns a list of IBI-ms lists,
+    one per run, each in arrival order -- mean_rr/sdnn can pool across runs freely
+    (order doesn'''t matter for those), but successive-difference metrics (rmssd, pnn50)
+    must only diff within a single run; see _hrv_metrics."""
+    if nominal_dt_ms is None:
+        nominal_dt_ms = 1000.0 / HR_EDA_NOMINAL_RATE_HZ
+    runs = []
+    current = []
+    prev_ts = None
+    prev_had_beats = True
+    for ts, ibis in zip(wdf["timestamp_ms"], wdf["_valid_ibis"]):
+        gap_too_big = prev_ts is not None and (ts - prev_ts) > nominal_dt_ms * RUN_MAX_GAP_FACTOR
+        breaks_run = (prev_ts is None) or gap_too_big or (not prev_had_beats)
+        if breaks_run and current:
+            runs.append(current)
+            current = []
+        if ibis:
+            current.extend(ibis)
+        prev_ts = ts
+        prev_had_beats = bool(ibis)
+    if current:
+        runs.append(current)
+    return runs
+
+
 def _filter_plausible_ibis(ibi_ms):
     """Drops IBI values outside a physiologically plausible range, then despikes the
     remaining sequence (in arrival order) by rejecting any beat that jumps more than
@@ -238,26 +279,41 @@ def _filter_plausible_ibis(ibi_ms):
     return filtered, n_in - len(filtered)
 
 
-def _hrv_metrics(ibi_ms):
-    """Same formulas as HrvCalculator.compute() -- see module docstring. Returns
-    NaN metrics (with beat_count = len(ibi_ms)) if there are fewer than 2 valid IBI
-    values, matching HrvCalculator's "returns null" case."""
-    n = len(ibi_ms)
+def _hrv_metrics(ibi_runs):
+    """Same formulas as HrvCalculator.compute() -- see module docstring -- except RMSSD/
+    pNN50 are now computed from successive differences taken WITHIN each run only, then
+    pooled, instead of diffing a single array flattened across the whole window. ibi_runs
+    is a list of IBI-ms sequences, one per contiguous beat run (see _split_into_runs).
+    mean_rr/sdnn pool every beat regardless of run (order-independent), but rmssd/pnn50
+    would be wrong if a diff were taken across a run boundary -- see _split_into_runs'
+    docstring. Returns NaN metrics (with beat_count = total beats) if there are fewer
+    than 2 valid IBI values total, matching HrvCalculator's "returns null" case; rmssd/
+    pnn50 are separately NaN if beats exist but no run has >= 2 of them (no successive
+    pair to diff at all)."""
+    all_beats = [v for run in ibi_runs for v in run]
+    n = len(all_beats)
     if n < 2:
         return {"beat_count": n, "mean_rr": np.nan, "mean_hr_bpm": np.nan,
                 "sdnn": np.nan, "rmssd": np.nan, "pnn50_percent": np.nan}
 
-    arr = np.array(ibi_ms, dtype=float)
+    arr = np.array(all_beats, dtype=float)
     mean_rr = arr.mean()
     sdnn = arr.std(ddof=0)
-
-    diffs = np.diff(arr)
-    rmssd = np.sqrt(np.mean(diffs ** 2))
-    pnn50 = 100.0 * np.sum(np.abs(diffs) > PNN50_THRESHOLD_MS) / (n - 1)
     mean_hr = 60000.0 / mean_rr if mean_rr > 0 else 0.0
 
+    diff_runs = [np.diff(np.array(run, dtype=float)) for run in ibi_runs if len(run) >= 2]
+    if diff_runs:
+        all_diffs = np.concatenate(diff_runs)
+        rmssd = np.sqrt(np.mean(all_diffs ** 2))
+        pnn50 = 100.0 * np.sum(np.abs(all_diffs) > PNN50_THRESHOLD_MS) / len(all_diffs)
+    else:
+        rmssd = np.nan
+        pnn50 = np.nan
+
     return {"beat_count": n, "mean_rr": round(mean_rr, 2), "mean_hr_bpm": round(mean_hr, 2),
-            "sdnn": round(sdnn, 2), "rmssd": round(rmssd, 2), "pnn50_percent": round(pnn50, 2)}
+            "sdnn": round(sdnn, 2),
+            "rmssd": round(rmssd, 2) if not np.isnan(rmssd) else np.nan,
+            "pnn50_percent": round(pnn50, 2) if not np.isnan(pnn50) else np.nan}
 
 
 def compute_hrv_windows(df, window_sec=WINDOW_SEC_DEFAULT,
@@ -284,9 +340,14 @@ def compute_hrv_windows(df, window_sec=WINDOW_SEC_DEFAULT,
         for idx, wdf in g.groupby(window_idx):
             n_hr_samples = len(wdf)
             coverage = n_hr_samples / expected_samples
-            ibi_window_raw = [v for lst in wdf["_valid_ibis"] for v in lst]  # flatten, in order
-            ibi_window, n_rejected = _filter_plausible_ibis(ibi_window_raw)
-            metrics = _hrv_metrics(ibi_window)
+            ibi_runs_raw = _split_into_runs(wdf)
+            ibi_runs, n_rejected = [], 0
+            for run in ibi_runs_raw:
+                filtered_run, n_rej_run = _filter_plausible_ibis(run)
+                n_rejected += n_rej_run
+                if filtered_run:
+                    ibi_runs.append(filtered_run)
+            metrics = _hrv_metrics(ibi_runs)
             low_confidence = bool(metrics["beat_count"] < hrv_min_beats or coverage < min_coverage)
             row = {
                 "session_id": session_id,
@@ -380,6 +441,13 @@ IRREGULAR_SPACING_TOLERANCE = 0.2  # a contiguous segment's median inter-sample 
     # from the nominal rate by more than this fraction is treated as irregularly sampled --
     # cvxEDA/eda_peaks reason in samples-per-second, so handing them unevenly spaced samples
     # as if they were uniform would distort the tonic/phasic split and SCR timing
+IRREGULAR_GAP_JITTER_TOLERANCE = 0.2   # a single inter-sample gap deviating from nominal by
+    # more than this fraction counts as "jittery"
+IRREGULAR_GAP_JITTER_FRACTION = 0.10   # ...and if more than this fraction of a segment's gaps
+    # are jittery, the segment is treated as irregular EVEN IF its median gap looks fine --
+    # a median-only check misses a segment that's mostly on-rate with a scattered handful of
+    # bad gaps throughout (audit finding: "EDA irregularity detection relies on median sample
+    # spacing ... intermittent irregularities aren't overlooked")
 
 
 def _decompose_eda_session(timestamps_ms, conductance, sampling_rate=HR_EDA_NOMINAL_RATE_HZ,
@@ -415,8 +483,15 @@ def _decompose_eda_session(timestamps_ms, conductance, sampling_rate=HR_EDA_NOMI
         is_irregular = False
         if seg_n >= 3:
             nominal_dt_ms = 1000.0 / sampling_rate
-            median_dt_ms = float(np.median(np.diff(seg_ts)))
-            is_irregular = abs(median_dt_ms - nominal_dt_ms) > IRREGULAR_SPACING_TOLERANCE * nominal_dt_ms
+            gaps_ms = np.diff(seg_ts)
+            median_dt_ms = float(np.median(gaps_ms))
+            median_off = abs(median_dt_ms - nominal_dt_ms) > IRREGULAR_SPACING_TOLERANCE * nominal_dt_ms
+            # per-gap jitter check: catches a segment whose MEDIAN gap looks fine but that has a
+            # scattered handful of individually bad gaps throughout (a median alone can't see this)
+            jittery_frac = float(np.mean(np.abs(gaps_ms - nominal_dt_ms) >
+                                          IRREGULAR_GAP_JITTER_TOLERANCE * nominal_dt_ms))
+            jitter_off = jittery_frac > IRREGULAR_GAP_JITTER_FRACTION
+            is_irregular = median_off or jitter_off
 
         if not is_irregular:
             result = _decompose_eda_segment(seg_conductance, sampling_rate, method)
