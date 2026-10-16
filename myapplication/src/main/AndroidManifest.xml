@@ -50,10 +50,16 @@
             </intent-filter>
         </activity>
 
+        <!-- stopWithTask="false": without this, Android's default behavior kills this
+             foreground service the moment its launching task is removed (e.g. exiting/
+             swiping away the watch screen), even though it has no other tie to any Activity's
+             lifecycle; recording should only ever stop on an explicit "stop" control command
+             from the phone (see VitalsControlListenerService), not from the screen closing. -->
         <service
             android:name=".VitalsStreamingService"
             android:exported="false"
-            android:foregroundServiceType="health" />
+            android:foregroundServiceType="health"
+            android:stopWithTask="false" />
 
         <!-- Lets the phone remotely start/stop VitalsStreamingService over the Data Layer,
              so recording can be controlled from the phone's Live Vitals screen. -->

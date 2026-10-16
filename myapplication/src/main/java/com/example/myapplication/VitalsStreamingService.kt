@@ -67,8 +67,15 @@ class VitalsStreamingService : Service(), WatchHealthManager.VitalsListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!running) {
             running = true
-            sessionId = "session_" + System.currentTimeMillis()
-            Log.i(TAG, "Starting new recording session: $sessionId")
+            // Prefer the app_session_id the phone sent (see VitalsControlListenerService),
+            // so this recording shares one id with whatever questionnaire/biomarker capture
+            // it's part of, instead of each side tracking its own. Falls back to minting a
+            // fresh one if it's missing (e.g. started without going through the phone's
+            // control path, or an old phone build) so recording still works either way.
+            val fromPhone = intent?.getStringExtra("appSessionId")
+            sessionId = if (!fromPhone.isNullOrEmpty()) fromPhone else "session_" + System.currentTimeMillis()
+            Log.i(TAG, "Starting new recording session: $sessionId" +
+                    (if (fromPhone.isNullOrEmpty()) " (locally generated)" else " (from phone)"))
             startForeground(
                 NOTIFICATION_ID,
                 buildNotification("Starting…"),

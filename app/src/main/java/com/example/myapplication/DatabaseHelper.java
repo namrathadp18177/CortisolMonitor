@@ -22,11 +22,24 @@ import com.example.myapplication.data.QuestionnaireResponse;
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "DatabaseHelper";
     private static final String DATABASE_NAME = "AppData.db"; // Renamed to reflect its purpose
-    private static final int DATABASE_VERSION = 6; // v6: added session_id to questionnaire_responses
+    private static final int DATABASE_VERSION = 8; // v8: added the "sessions" table and app_session_id (links a cortisol reading / questionnaire response to one Patient/Care-Provider session; see TABLE_SESSIONS)
     private final Context context;
 
     // Store current user email (kept for questionnaire and biomarker association)
     private static String currentUserEmail = "";
+
+    // The app_session_id of the Start-Session flow currently in progress, if any (see
+    // StartSessionActivity). Set right before launching a biomarker test from that flow,
+    // and consumed (read once, then cleared) the moment the resulting experiment row is
+    // created in createBiomarkerExperiment() below -- so it tags exactly the one test that
+    // was actually started from that session and never leaks into a later, unrelated
+    // standalone test. Deliberately NOT touching OutputBluetooth.java's 4 call sites to set
+    // this directly; it's picked up ambiently the same way currentUserEmail already is.
+    private static String currentAppSessionId = null;
+
+    public static void setCurrentAppSessionId(String appSessionId) {
+        currentAppSessionId = appSessionId;
+    }
 
     // Constants for biomarker tables
     public static final String TABLE_BIOMARKER_EXPERIMENTS = "biomarker_experiments";
@@ -53,7 +66,41 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_AVG = "avg";
     public static final String COLUMN_TUBE_ID = "tube_id";
     public static final String COLUMN_CARTRIDGE_ID = "cartridge_id";
+    // v7: optional link from a cortisol/biomarker reading to the watch vitals-recording
+    // session it belongs to (VitalsDatabaseHelper's session_id, e.g. "session_1735999999999").
+    // Null until someone tags a reading via ResultActivity's "Link to watch session" picker --
+    // there is no automatic pairing, since the two are recorded through entirely separate
+    // hardware/services with no shared identifier at capture time.
+    public static final String COLUMN_VITALS_SESSION_ID = "vitals_session_id";
 
+    // v8: link from a cortisol/biomarker reading to a "sessions" row (see TABLE_SESSIONS below).
+    // Distinct from COLUMN_VITALS_SESSION_ID (manual link to a watch-recording only) and from
+    // questionnaire_responses.session_id (groups answers within one assessment run) -- this is
+    // the new *cross-data-type* session id shared by a watch recording + questionnaire run +
+    // biomarker reading that were all captured as one Patient/Care-Provider session. Null until
+    // that session-creation flow (not yet built) tags a reading.
+    public static final String COLUMN_APP_SESSION_ID = "app_session_id";
+
+    // v8: cross-cutting session table. Lives in AppData.db (not watch_vitals.db) since that is
+    // where questionnaire_responses and biomarker_experiments already live; a watch-vitals
+    // recording is linked by *reusing this same session_id value* as the session_id it already
+    // writes into VitalsDatabaseHelper's eda/hr/skin_temp/accel tables, rather than a real SQL
+    // foreign key -- watch_vitals.db is a separate database file/connection, so a DB-enforced FK
+    // across the two isn't possible; the shared id is an application-level convention only.
+    public static final String TABLE_SESSIONS = "sessions";
+    public static final String COLUMN_SESSION_ID = "session_id";
+    public static final String COLUMN_SESSION_PATIENT_EMAIL = "patient_email";
+    public static final String COLUMN_SESSION_CREATED_AT = "created_at";
+    public static final String COLUMN_SESSION_CREATED_BY_EMAIL = "created_by_email";
+    public static final String COLUMN_SESSION_NOTE = "note";
+
+    private static final String CREATE_TABLE_SESSIONS = "CREATE TABLE IF NOT EXISTS " + TABLE_SESSIONS + "("
+            + COLUMN_SESSION_ID + " TEXT PRIMARY KEY,"
+            + COLUMN_SESSION_PATIENT_EMAIL + " TEXT,"
+            + COLUMN_SESSION_CREATED_AT + " INTEGER,"
+            + COLUMN_SESSION_CREATED_BY_EMAIL + " TEXT,"
+            + COLUMN_SESSION_NOTE + " TEXT"
+            + ")";
 
     // Create table statements for biomarker data
     private static final String CREATE_TABLE_BIOMARKER_EXPERIMENTS = "CREATE TABLE " + TABLE_BIOMARKER_EXPERIMENTS + "("
@@ -68,6 +115,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             + COLUMN_DATA_SIZE + " INTEGER,"
             + COLUMN_TUBE_ID + " TEXT,"
             + COLUMN_CARTRIDGE_ID + " TEXT,"
+            + COLUMN_VITALS_SESSION_ID + " TEXT,"
+            + COLUMN_APP_SESSION_ID + " TEXT,"
             + "cloud_id TEXT,"
             + "updated_at TEXT,"
             + "dirty INTEGER DEFAULT 1"
@@ -127,6 +176,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "questionnaire_type TEXT," +
                     "user_email TEXT," +
                     "session_id TEXT," +
+                    "" + COLUMN_APP_SESSION_ID + " TEXT," +
                     "cloud_id TEXT," +
                     "updated_at TEXT," +
                     "dirty INTEGER DEFAULT 1)");
@@ -134,6 +184,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // Create biomarker tables
             db.execSQL(CREATE_TABLE_BIOMARKER_EXPERIMENTS);
             db.execSQL(CREATE_TABLE_BIOMARKER_DATA);
+
+            // Create cross-cutting sessions table (see TABLE_SESSIONS doc above)
+            db.execSQL(CREATE_TABLE_SESSIONS);
 
             // Create questionnaire summary table
             db.execSQL("CREATE TABLE IF NOT EXISTS questionnaire_summaries (" +
@@ -229,6 +282,29 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // Add session_id column for grouping responses by assessment run
             try {
                 db.execSQL("ALTER TABLE questionnaire_responses ADD COLUMN session_id TEXT");
+            } catch (Exception ignored) {}
+        }
+        if (oldVersion < 7) {
+            // Add vitals_session_id column so a cortisol reading can be linked to the watch
+            // vitals-recording session it belongs to (see COLUMN_VITALS_SESSION_ID doc above).
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS +
+                        " ADD COLUMN " + COLUMN_VITALS_SESSION_ID + " TEXT");
+            } catch (Exception ignored) {}
+        }
+        if (oldVersion < 8) {
+            // Add the cross-cutting sessions table, and app_session_id columns on the two
+            // existing tables that a session can tag (see COLUMN_APP_SESSION_ID doc above).
+            try {
+                db.execSQL(CREATE_TABLE_SESSIONS);
+            } catch (Exception ignored) {}
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_BIOMARKER_EXPERIMENTS +
+                        " ADD COLUMN " + COLUMN_APP_SESSION_ID + " TEXT");
+            } catch (Exception ignored) {}
+            try {
+                db.execSQL("ALTER TABLE questionnaire_responses ADD COLUMN " +
+                        COLUMN_APP_SESSION_ID + " TEXT");
             } catch (Exception ignored) {}
         }
     }
@@ -1132,7 +1208,123 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         long id = db.insert(TABLE_BIOMARKER_EXPERIMENTS, null, values);
         Log.d(TAG, "Created biomarker experiment with ID " + id);
+
+        // Consume the ambient session id (see field doc above) -- tags this one experiment,
+        // then clears so it can't accidentally tag a later, unrelated standalone test.
+        if (currentAppSessionId != null && !currentAppSessionId.isEmpty()) {
+            setAppSessionForExperiment(id, currentAppSessionId);
+            currentAppSessionId = null;
+        }
         return id;
+    }
+
+    /**
+     * Tags a biomarker (cortisol) experiment with the watch vitals-recording session it
+     * belongs to (see {@link #COLUMN_VITALS_SESSION_ID}). Used by ResultActivity's
+     * "Link to watch session" picker; there is no automatic pairing at capture time, so this
+     * is always an explicit user action. Pass null/empty to clear an existing link.
+     *
+     * @return true if a row was actually updated (false if experimentId doesn't exist)
+     */
+    public boolean setVitalsSessionForExperiment(long experimentId, String vitalsSessionId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_VITALS_SESSION_ID, vitalsSessionId);
+        int rows = db.update(TABLE_BIOMARKER_EXPERIMENTS, values,
+                COLUMN_ID + " = ?", new String[]{String.valueOf(experimentId)});
+        return rows > 0;
+    }
+
+    /** The watch vitals-session_id currently linked to one biomarker experiment, or null if
+     *  it was never tagged (see {@link #setVitalsSessionForExperiment}). */
+    public String getVitalsSessionForExperiment(long experimentId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor c = db.query(TABLE_BIOMARKER_EXPERIMENTS,
+                new String[]{COLUMN_VITALS_SESSION_ID}, COLUMN_ID + " = ?",
+                new String[]{String.valueOf(experimentId)}, null, null, null)) {
+            if (c.moveToFirst()) {
+                return c.getString(0);
+            }
+        }
+        return null;
+    }
+
+    /** The most recently created biomarker experiment's ID for one user, or -1 if they have
+     *  none yet. Used as a fallback by ResultActivity when it wasn't opened with an explicit
+     *  experiment_id Intent extra (e.g. right after a fresh Bluetooth reading, rather than by
+     *  tapping an old result in the history graph) so the "Link to watch session" picker still
+     *  has something to tag. */
+    public long getMostRecentExperimentId(String username) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor c = db.query(TABLE_BIOMARKER_EXPERIMENTS,
+                new String[]{COLUMN_ID}, COLUMN_USERNAME + " = ?",
+                new String[]{username}, null, null, COLUMN_TIMESTAMP + " DESC", "1")) {
+            if (c.moveToFirst()) {
+                return c.getLong(0);
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Creates a new row in {@link #TABLE_SESSIONS} and returns its generated session_id.
+     * Schema-only for now: nothing calls this yet (no session-creation flow exists in the UI
+     * yet), added so the table/helper is ready for that flow to wire up next.
+     *
+     * @param patientEmail   the patient this session belongs to (required)
+     * @param createdByEmail who started it -- the patient themselves, or a care provider running
+     *                       a session on the patient's behalf; may equal patientEmail
+     * @param note           optional free-text label, may be null
+     */
+    public String createSession(String patientEmail, String createdByEmail, String note) {
+        String sessionId = "asess_" + System.currentTimeMillis();
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_SESSION_ID, sessionId);
+        values.put(COLUMN_SESSION_PATIENT_EMAIL, patientEmail);
+        values.put(COLUMN_SESSION_CREATED_AT, System.currentTimeMillis());
+        values.put(COLUMN_SESSION_CREATED_BY_EMAIL, createdByEmail);
+        values.put(COLUMN_SESSION_NOTE, note);
+        db.insert(TABLE_SESSIONS, null, values);
+        Log.d(TAG, "Created session " + sessionId + " for " + patientEmail);
+        return sessionId;
+    }
+
+    /** All sessions for one patient, newest first. Not yet called from any UI. */
+    public Cursor getSessionsForPatient(String patientEmail) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(TABLE_SESSIONS, null,
+                COLUMN_SESSION_PATIENT_EMAIL + " = ?", new String[]{patientEmail},
+                null, null, COLUMN_SESSION_CREATED_AT + " DESC");
+    }
+
+    /**
+     * Tags a biomarker (cortisol) experiment with the cross-cutting app session it belongs to
+     * (see {@link #COLUMN_APP_SESSION_ID}). Not the same as {@link #setVitalsSessionForExperiment}
+     * above. Not yet called from any UI.
+     *
+     * @return true if a row was actually updated (false if experimentId doesn't exist)
+     */
+    public boolean setAppSessionForExperiment(long experimentId, String appSessionId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_APP_SESSION_ID, appSessionId);
+        int rows = db.update(TABLE_BIOMARKER_EXPERIMENTS, values,
+                COLUMN_ID + " = ?", new String[]{String.valueOf(experimentId)});
+        return rows > 0;
+    }
+
+    /** The app session_id currently linked to one biomarker experiment, or null if untagged. */
+    public String getAppSessionForExperiment(long experimentId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor c = db.query(TABLE_BIOMARKER_EXPERIMENTS,
+                new String[]{COLUMN_APP_SESSION_ID}, COLUMN_ID + " = ?",
+                new String[]{String.valueOf(experimentId)}, null, null, null)) {
+            if (c.moveToFirst()) {
+                return c.getString(0);
+            }
+        }
+        return null;
     }
 
     /**

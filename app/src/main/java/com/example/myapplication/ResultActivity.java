@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -45,6 +46,7 @@ public class ResultActivity extends AppCompatActivity {
 
     private TextView tvCortisol, tvTimestamp, tvPreviousResults;
     private Button btnFinalResults;
+    private Button btnLinkVitalsSession;
     private ImageButton btnBack;
     private TableLayout tablePreviousResults;
     private GraphView graphViewResults;
@@ -127,6 +129,9 @@ public class ResultActivity extends AppCompatActivity {
         btnExportCsv.setOnClickListener(v -> exportCsvForAllHistory());
         btnExportPdf.setOnClickListener(v -> exportPdfForAllHistory());
 
+        btnLinkVitalsSession = findViewById(R.id.btnLinkVitalsSession);
+        btnLinkVitalsSession.setOnClickListener(v -> showLinkVitalsSessionDialog());
+
         SimpleDateFormat sdf =
                 new SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault());
         sdf.setTimeZone(TimeZone.getDefault());
@@ -178,6 +183,56 @@ public class ResultActivity extends AppCompatActivity {
             selectedDateTimestamp = intent.getLongExtra("selected_date", System.currentTimeMillis());
         }
 
+    }
+
+    /**
+     * Lets the user manually pair this cortisol reading with one of their watch
+     * vitals-recording sessions (see {@link DatabaseHelper#COLUMN_VITALS_SESSION_ID}) -- the
+     * two are captured through completely separate hardware/services with no shared ID at
+     * capture time, so this is always an explicit tap, never automatic.
+     *
+     * Resolves which biomarker experiment to tag using {@link #experimentId} when this screen
+     * was opened from the history graph (which passes it via Intent); otherwise (e.g. right
+     * after a fresh Bluetooth reading) falls back to the user's most recently created
+     * experiment, since a fresh reading doesn't currently arrive with an experiment_id extra.
+     */
+    private void showLinkVitalsSessionDialog() {
+        long targetExperimentId = experimentId;
+        if (targetExperimentId <= 0) {
+            targetExperimentId = dbHelper.getMostRecentExperimentId(userEmail);
+        }
+        if (targetExperimentId <= 0) {
+            Toast.makeText(this, "No cortisol reading found to link yet.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final long finalExperimentId = targetExperimentId;
+
+        List<VitalsDatabaseHelper.SessionSummary> sessions =
+                VitalsDatabaseHelper.getInstance(this).getDistinctSessions(userEmail);
+        if (sessions.isEmpty()) {
+            Toast.makeText(this, "No watch sessions recorded yet -- record one from the "
+                    + "Live Vitals screen first.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        SimpleDateFormat fmt = new SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault());
+        String[] labels = new String[sessions.size()];
+        for (int i = 0; i < sessions.size(); i++) {
+            VitalsDatabaseHelper.SessionSummary s = sessions.get(i);
+            labels[i] = fmt.format(new Date(s.startMs)) + " - " + fmt.format(new Date(s.endMs))
+                    + "  (" + s.sampleCount + " samples)";
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Link this reading to which watch session?")
+                .setItems(labels, (dialog, which) -> {
+                    String sessionId = sessions.get(which).sessionId;
+                    boolean ok = dbHelper.setVitalsSessionForExperiment(finalExperimentId, sessionId);
+                    Toast.makeText(this, ok ? "Linked to watch session" : "Could not save link",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
 

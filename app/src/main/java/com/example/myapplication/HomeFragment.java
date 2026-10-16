@@ -128,6 +128,16 @@ public class HomeFragment extends Fragment {
                 startActivity(new Intent(requireActivity(), LiveVitalsActivity.class));
             });
         }
+
+        // Start Session card — ties a watch recording + questionnaire + biomarker test
+        // together under one app_session_id (see StartSessionActivity).
+        MaterialButton btnStartSession = root.findViewById(R.id.btnStartSession);
+        if (btnStartSession != null) {
+            btnStartSession.setOnClickListener(v -> {
+                if (!isAdded()) return;
+                startActivity(new Intent(requireActivity(), StartSessionActivity.class));
+            });
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

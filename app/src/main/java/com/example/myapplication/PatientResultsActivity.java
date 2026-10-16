@@ -40,6 +40,10 @@ public class PatientResultsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Reached both from a patient's own Cortisol Graph screen and from a care provider's
+        // PatientHistoryDetailActivity -- either logged-in role is allowed here, unlike the
+        // role-specific screens elsewhere in this fix.
+        if (!RoleGuard.requireLoggedIn(this)) return;
         setContentView(R.layout.activity_patient_results);
 
         if (getSupportActionBar() != null) {

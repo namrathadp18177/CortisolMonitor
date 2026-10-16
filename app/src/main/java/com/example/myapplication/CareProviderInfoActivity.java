@@ -14,6 +14,7 @@ public class CareProviderInfoActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requirePatient(this)) return;
         setContentView(R.layout.activity_care_provider_info);
 
         // Toolbar

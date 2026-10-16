@@ -25,6 +25,7 @@ public class ModifyPatientActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requireCareProvider(this)) return;
         setContentView(R.layout.activity_modify_existing_patient);
 
         dbHelper = UserDatabaseHelper.getInstance(this);
@@ -72,7 +73,8 @@ public class ModifyPatientActivity extends AppCompatActivity {
     private void showPatientOptionsDialog(UserDatabaseHelper.CpPatientInfo info) {
         String[] options = {
                 "Edit Patient Details",
-                "Start Test for this Patient"
+                "Start Test for this Patient",
+                "Start Session for this Patient"
         };
 
         new AlertDialog.Builder(this)
@@ -85,9 +87,18 @@ public class ModifyPatientActivity extends AppCompatActivity {
                         intent.putExtra("patient_id", info.patientId);
                         intent.putExtra("user_role", "CARE_PROVIDER");
                         startActivity(intent);
-                    } else {
-                        // new: show step selector
+                    } else if (which == 1) {
+                        // existing biomarker-only flow (with hardware step selector) — unchanged
                         showStepSelectorDialog(info);
+                    } else {
+                        // new: watch + questionnaire + biomarker tied together, see
+                        // StartSessionActivity. Deliberately a separate option rather than
+                        // rerouting "Start Test for this Patient" through it, since that
+                        // existing flow's step selector (mid-hardware-procedure resume) has
+                        // no equivalent here yet.
+                        Intent intent = new Intent(this, StartSessionActivity.class);
+                        intent.putExtra("patient_email", info.email);
+                        startActivity(intent);
                     }
                 })
                 .setCancelable(true)

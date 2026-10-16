@@ -105,6 +105,15 @@ DEMO_WINDOW_SEC_DEFAULT = 15.0   # aligns cleanly with the demo's 30/15/15s segm
 MIN_COVERAGE_DEFAULT = 0.5
 HRV_MIN_BEATS_DEFAULT = 30        # HrvCalculator.hasEnoughData()
 PNN50_THRESHOLD_MS = 50.0         # HrvCalculator's fixed NN50 threshold
+IBI_MIN_PLAUSIBLE_MS = 300   # 200 bpm -- above even maximal exertion; faster IBIs are sensor
+                              # noise/double-counted beats, not real heartbeats
+IBI_MAX_PLAUSIBLE_MS = 2000  # 30 bpm -- below resting bradycardia/deep sleep; slower IBIs are
+                              # almost always a missed-beat artifact, not a real heartbeat
+IBI_MAX_RELATIVE_JUMP = 0.25  # reject a beat that differs from the previous ACCEPTED beat by
+                               # more than 25% (a simple ectopic-beat/artifact despike, in the
+                               # same spirit as the fixed-threshold rules used by Kubios/Malik's
+                               # rule -- not a substitute for a real arrhythmia detector, just a
+                               # guard against single corrupted samples skewing RMSSD/SDNN)
 EDA_MIN_PEAK_PROMINENCE_US = 0.05 # Simple local-max detector behind eda_peak_count below -- not
                                    # a real SCR/tonic-phasic decomposition on its own, but kept
                                    # as-is (existing dashboards and the rule-based classifier's
@@ -206,6 +215,29 @@ def _parse_valid_ibis(ibi_list_str, ibi_status_str):
     return [ibi for ibi, status in zip(ibis, statuses) if status == 0]
 
 
+def _filter_plausible_ibis(ibi_ms):
+    """Drops IBI values outside a physiologically plausible range, then despikes the
+    remaining sequence (in arrival order) by rejecting any beat that jumps more than
+    IBI_MAX_RELATIVE_JUMP from the last ACCEPTED beat -- a single corrupted IBI sample
+    (sensor glitch, double-counted beat) would otherwise distort RMSSD/SDNN far more
+    than its one-sample share should. Returns (filtered_list, n_rejected). This runs
+    AFTER _parse_valid_ibis' own status==0 filter -- the device's own status flag and
+    this plausibility check catch different failure modes (status flags a sample the
+    sensor itself didn't trust; this catches a sample the sensor trusted but that is
+    still physiologically impossible or a wild outlier relative to its neighbours)."""
+    n_in = len(ibi_ms)
+    range_ok = [v for v in ibi_ms if IBI_MIN_PLAUSIBLE_MS <= v <= IBI_MAX_PLAUSIBLE_MS]
+
+    filtered = []
+    last_accepted = None
+    for v in range_ok:
+        if last_accepted is None or abs(v - last_accepted) / last_accepted <= IBI_MAX_RELATIVE_JUMP:
+            filtered.append(v)
+            last_accepted = v
+        # else: rejected as a despike outlier relative to the last accepted beat
+    return filtered, n_in - len(filtered)
+
+
 def _hrv_metrics(ibi_ms):
     """Same formulas as HrvCalculator.compute() -- see module docstring. Returns
     NaN metrics (with beat_count = len(ibi_ms)) if there are fewer than 2 valid IBI
@@ -245,14 +277,15 @@ def compute_hrv_windows(df, window_sec=WINDOW_SEC_DEFAULT,
 
     rows = []
     for session_id, g in df.groupby("session_id", sort=False):
-        g = g.sort_values("timestamp_ms")
+        g = g.sort_values("timestamp_ms").drop_duplicates(subset=["timestamp_ms"])
         session_start_ms = g["timestamp_ms"].iloc[0]
         participant_email = g["participant_email"].iloc[0]
         window_idx = ((g["timestamp_ms"] - session_start_ms) // window_ms).astype(int)
         for idx, wdf in g.groupby(window_idx):
             n_hr_samples = len(wdf)
             coverage = n_hr_samples / expected_samples
-            ibi_window = [v for lst in wdf["_valid_ibis"] for v in lst]  # flatten, in order
+            ibi_window_raw = [v for lst in wdf["_valid_ibis"] for v in lst]  # flatten, in order
+            ibi_window, n_rejected = _filter_plausible_ibis(ibi_window_raw)
             metrics = _hrv_metrics(ibi_window)
             low_confidence = bool(metrics["beat_count"] < hrv_min_beats or coverage < min_coverage)
             row = {
@@ -264,6 +297,7 @@ def compute_hrv_windows(df, window_sec=WINDOW_SEC_DEFAULT,
                 "expected_hr_samples": round(expected_samples),
                 "sample_coverage": round(coverage, 3),
                 **metrics,
+                "ibi_rejected_implausible": n_rejected,
                 "low_confidence": low_confidence,
             }
             # Only present when the input carries a "phase" column (currently just
@@ -342,6 +376,12 @@ def _decompose_eda_segment(conductance, sampling_rate=HR_EDA_NOMINAL_RATE_HZ,
     return tonic, phasic, scr_peak_idx, scr_amplitude
 
 
+IRREGULAR_SPACING_TOLERANCE = 0.2  # a contiguous segment's median inter-sample gap deviating
+    # from the nominal rate by more than this fraction is treated as irregularly sampled --
+    # cvxEDA/eda_peaks reason in samples-per-second, so handing them unevenly spaced samples
+    # as if they were uniform would distort the tonic/phasic split and SCR timing
+
+
 def _decompose_eda_session(timestamps_ms, conductance, sampling_rate=HR_EDA_NOMINAL_RATE_HZ,
                             method=EDA_DECOMPOSITION_METHOD_DEFAULT):
     """Runs _decompose_eda_segment() once per contiguous run in one session's full raw
@@ -349,21 +389,70 @@ def _decompose_eda_session(timestamps_ms, conductance, sampling_rate=HR_EDA_NOMI
     tonic/phasic arrays (NaN wherever a segment was too short, skipped, or failed) plus
     a flat list of (session-local index, amplitude) SCR events. Called ONCE per session
     on the complete raw stream -- not per window -- same grouping convention
-    compute_hrv_windows/compute_eda_windows already use."""
+    compute_hrv_windows/compute_eda_windows already use.
+
+    Each contiguous segment's ACTUAL sample spacing is checked against the nominal rate
+    before decomposing (see IRREGULAR_SPACING_TOLERANCE above) -- a segment sampled close
+    enough to nominal is decomposed as before; one that drifts (batched samples, a few
+    dropped ticks that didn't open a big-enough gap to split the segment) is first
+    resampled onto a uniform sampling_rate grid (linear interpolation) so cvxEDA/eda_peaks
+    see what they assume, then the result is interpolated back onto this segment's own
+    original timestamps so every downstream window-aggregation step is unaffected."""
     n = len(conductance)
     tonic = np.full(n, np.nan)
     phasic = np.full(n, np.nan)
     scr_events = []  # list of (session-local index, amplitude)
+    ts = np.asarray(timestamps_ms, dtype=float)
+    irregular_segments = 0
+    total_segments = 0
 
     for start, end in _contiguous_segments(timestamps_ms):
-        result = _decompose_eda_segment(conductance[start:end], sampling_rate, method)
+        total_segments += 1
+        seg_ts = ts[start:end]
+        seg_conductance = conductance[start:end]
+        seg_n = len(seg_conductance)
+
+        is_irregular = False
+        if seg_n >= 3:
+            nominal_dt_ms = 1000.0 / sampling_rate
+            median_dt_ms = float(np.median(np.diff(seg_ts)))
+            is_irregular = abs(median_dt_ms - nominal_dt_ms) > IRREGULAR_SPACING_TOLERANCE * nominal_dt_ms
+
+        if not is_irregular:
+            result = _decompose_eda_segment(seg_conductance, sampling_rate, method)
+            if result is None:
+                continue
+            seg_tonic, seg_phasic, seg_scr_idx, seg_scr_amp = result
+            tonic[start:end] = seg_tonic
+            phasic[start:end] = seg_phasic
+            for local_idx, amp in zip(seg_scr_idx, seg_scr_amp):
+                scr_events.append((start + int(local_idx), float(amp)))
+            continue
+
+        irregular_segments += 1
+        nominal_dt_ms = 1000.0 / sampling_rate
+        grid_ts = np.arange(seg_ts[0], seg_ts[-1] + nominal_dt_ms / 2.0, nominal_dt_ms)
+        if len(grid_ts) < EDA_DECOMPOSITION_MIN_SAMPLES:
+            continue  # too short even after resampling -- leave this segment's windows NaN
+        resampled = np.interp(grid_ts, seg_ts, seg_conductance)
+        result = _decompose_eda_segment(resampled, sampling_rate, method)
         if result is None:
             continue
-        seg_tonic, seg_phasic, seg_scr_idx, seg_scr_amp = result
+        grid_tonic, grid_phasic, grid_scr_idx, grid_scr_amp = result
+        # map the uniform-grid result back onto this segment's own original timestamps
+        seg_tonic = np.interp(seg_ts, grid_ts, grid_tonic)
+        seg_phasic = np.interp(seg_ts, grid_ts, grid_phasic)
         tonic[start:end] = seg_tonic
         phasic[start:end] = seg_phasic
-        for local_idx, amp in zip(seg_scr_idx, seg_scr_amp):
-            scr_events.append((start + int(local_idx), float(amp)))
+        for grid_idx, amp in zip(grid_scr_idx, grid_scr_amp):
+            peak_t = grid_ts[grid_idx]
+            nearest_local = int(np.argmin(np.abs(seg_ts - peak_t)))
+            scr_events.append((start + nearest_local, float(amp)))
+
+    if total_segments:
+        print(f"  [info] EDA decomposition: {irregular_segments}/{total_segments} contiguous "
+              f"segment(s) had irregular sample spacing and were resampled to a uniform "
+              f"{sampling_rate:.2f} Hz grid before decomposition.")
 
     return tonic, phasic, scr_events
 
@@ -393,7 +482,7 @@ def compute_eda_windows(df, window_sec=WINDOW_SEC_DEFAULT, min_coverage=MIN_COVE
 
     rows = []
     for session_id, g in df.groupby("session_id", sort=False):
-        g = g.sort_values("timestamp_ms").reset_index(drop=True)
+        g = g.sort_values("timestamp_ms").drop_duplicates(subset=["timestamp_ms"]).reset_index(drop=True)
         session_start_ms = g["timestamp_ms"].iloc[0]
         participant_email = g["participant_email"].iloc[0]
         window_idx = ((g["timestamp_ms"] - session_start_ms) // window_ms).astype(int)

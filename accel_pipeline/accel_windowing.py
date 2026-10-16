@@ -96,7 +96,7 @@ def compute_windows(df, window_sec=WINDOW_SEC_DEFAULT,
 
     rows = []
     for session_id, g in df.groupby("session_id", sort=False):
-        g = g.sort_values("timestamp_ms")
+        g = g.sort_values("timestamp_ms").drop_duplicates(subset=["timestamp_ms"])
         session_start_ms = g["timestamp_ms"].iloc[0]
         participant_email = g["participant_email"].iloc[0]
         window_idx = ((g["timestamp_ms"] - session_start_ms) // window_ms).astype(int)

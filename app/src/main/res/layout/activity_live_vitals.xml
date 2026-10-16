@@ -77,6 +77,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content" />
 
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/chartHeartRate"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:layout_marginTop="10dp" />
+
                 <TextView
                     android:text="Tap for day-wise history, HR graph &amp; HRV (RMSSD/SDNN) ›"
                     android:textSize="11sp"
@@ -118,6 +124,12 @@
                     android:textColor="@color/text_primary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content" />
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/chartEda"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:layout_marginTop="10dp" />
 
                 <TextView
                     android:text="Tap for day-wise history &amp; graph ›"
@@ -237,6 +249,12 @@
                     android:textColor="@color/text_primary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content" />
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/chartAccel"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:layout_marginTop="10dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

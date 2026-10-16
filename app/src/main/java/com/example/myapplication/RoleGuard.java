@@ -37,6 +37,19 @@ public final class RoleGuard {
         return true;
     }
 
+    /**
+     * Looser gate for screens either role is allowed to open (e.g. a results screen reached
+     * both from a patient's own history and from a care provider's view of that patient).
+     * Only bounces a logged-out user back to the launcher; does not enforce a specific role.
+     */
+    public static boolean requireLoggedIn(Activity activity) {
+        if (!FirebaseAuthHelper.isLoggedIn()) {
+            bounceToLauncher(activity);
+            return false;
+        }
+        return true;
+    }
+
     private static void bounceToLauncher(Activity activity) {
         Intent intent = new Intent(activity, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

@@ -591,6 +591,57 @@ public class VitalsCsvExporter {
                 "Export day data");
     }
 
+    /** Exports ALL FOUR vitals signals (EDA, heart rate + HRV summary, skin temperature,
+     *  accelerometer) for one local calendar day at once, scoped to whoever is currently
+     *  logged in -- same day range as {@link #exportVitalsDay}, just not limited to a single
+     *  vitalType. Used by the "Export all signals for this day" button on
+     *  VitalsDayDetailActivity, for a day-wise equivalent of {@link #exportVitalsSession}
+     *  (which does the same 4-signal bundle but scoped to one session_id instead of one
+     *  calendar day). Any signal with zero rows that day still gets a header-only CSV, same
+     *  as the single-signal day export, so the file set is consistent day to day. */
+    public static ExportResult exportAllVitalsDay(Context context, long dayStartMs, long dayEndMs)
+            throws IOException {
+        String userEmail = DatabaseHelper.getCurrentUserEmail();
+        VitalsDatabaseHelper vdb = VitalsDatabaseHelper.getInstance(context);
+        String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        File dir = context.getExternalFilesDir(null);
+        if (dir == null) {
+            throw new IOException("External files directory unavailable");
+        }
+        String authority = context.getPackageName() + ".fileprovider";
+        List<Uri> uris = new ArrayList<>();
+
+        File edaFile = new File(dir, "eda_day_" + stamp + ".csv");
+        int edaRows = writeEdaForDay(vdb, userEmail, dayStartMs, dayEndMs, edaFile);
+        uris.add(FileProvider.getUriForFile(context, authority, edaFile));
+
+        File hrFile = new File(dir, "hr_day_" + stamp + ".csv");
+        int hrRows = writeHrForDay(vdb, userEmail, dayStartMs, dayEndMs, hrFile);
+        uris.add(FileProvider.getUriForFile(context, authority, hrFile));
+
+        File hrvFile = new File(dir, "hrv_summary_day_" + stamp + ".csv");
+        writeHrvSummaryForDay(vdb, userEmail, dayStartMs, dayEndMs, hrvFile);
+        uris.add(FileProvider.getUriForFile(context, authority, hrvFile));
+
+        File tempFile = new File(dir, "skin_temp_day_" + stamp + ".csv");
+        int tempRows = writeSkinTempForDay(vdb, userEmail, dayStartMs, dayEndMs, tempFile);
+        uris.add(FileProvider.getUriForFile(context, authority, tempFile));
+
+        File accelFile = new File(dir, "accel_day_" + stamp + ".csv");
+        int accelRows = writeAccelForDay(vdb, userEmail, dayStartMs, dayEndMs, accelFile);
+        uris.add(FileProvider.getUriForFile(context, authority, accelFile));
+
+        return new ExportResult(uris, edaRows, hrRows, tempRows, accelRows, 0, 0);
+    }
+
+    /** Exports and shares all four vitals signals for one day at once — used by the "Export
+     *  all signals for this day" button on VitalsDayDetailActivity. */
+    public static void exportAllVitalsDayAndShare(Activity activity, long dayStartMs, long dayEndMs) {
+        runExportAndShare(activity,
+                ctx -> exportAllVitalsDay(ctx, dayStartMs, dayEndMs),
+                "Export all vitals for this day");
+    }
+
     private static int writeEdaForDay(VitalsDatabaseHelper db, String userEmail,
                                        long startMs, long endMs, File file) throws IOException {
         try (Cursor c = db.getReadableDatabase().query(
@@ -625,6 +676,18 @@ public class VitalsCsvExporter {
                 new String[]{userEmail, String.valueOf(startMs), String.valueOf(endMs)},
                 null, null, "timestamp_ms ASC")) {
             return writeSkinTempRows(c, file);
+        }
+    }
+
+    private static int writeAccelForDay(VitalsDatabaseHelper db, String userEmail,
+                                         long startMs, long endMs, File file) throws IOException {
+        try (Cursor c = db.getReadableDatabase().query(
+                VitalsDatabaseHelper.TABLE_ACCEL,
+                new String[]{"session_id", "participant_email", "timestamp_ms", "x", "y", "z", "status", "received_at"},
+                "participant_email = ? AND timestamp_ms >= ? AND timestamp_ms <= ?",
+                new String[]{userEmail, String.valueOf(startMs), String.valueOf(endMs)},
+                null, null, "timestamp_ms ASC")) {
+            return writeAccelRows(c, file);
         }
     }
 

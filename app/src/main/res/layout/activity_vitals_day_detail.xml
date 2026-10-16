@@ -127,6 +127,19 @@
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 app:backgroundTint="@color/primary"
+                app:cornerRadius="10dp"
+                android:layout_marginBottom="10dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportAllVitalsDay"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Export all signals for this day"
+                android:textColor="@color/primary"
+                android:textSize="15sp"
+                app:strokeColor="@color/primary"
                 app:cornerRadius="10dp" />
 
         </LinearLayout>

@@ -44,6 +44,7 @@ public class EditPatientActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requireCareProvider(this)) return;
         setContentView(R.layout.activity_edit_patient);
 
         dbHelper = UserDatabaseHelper.getInstance(this);

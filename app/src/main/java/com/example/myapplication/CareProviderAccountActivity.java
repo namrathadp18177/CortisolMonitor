@@ -30,6 +30,7 @@ public class CareProviderAccountActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requireCareProvider(this)) return;
         setContentView(R.layout.activity_care_provider_account);
 
         if (getSupportActionBar() != null) {

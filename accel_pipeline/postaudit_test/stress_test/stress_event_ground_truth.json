@@ -1,0 +1,11 @@
+[
+  {
+    "session_id": "synth_day5",
+    "event_onset_ts_ms": 1793872800000,
+    "event_onset_hour_since_wake": 6.0,
+    "cortisol_lag_min": 20.0,
+    "stress_amp_eda": 6.0,
+    "stress_amp_hr": 35.0,
+    "stress_cortisol_amp": 0.22
+  }
+]

@@ -248,6 +248,22 @@
                     android:textStyle="bold"
                     android:layout_marginTop="8dp"
                     android:elevation="2dp" />
+
+                <!-- Links this cortisol reading to a watch vitals-recording session, since the
+                     two are captured by separate hardware/services with no shared ID; see
+                     DatabaseHelper#COLUMN_VITALS_SESSION_ID. -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLinkVitalsSession"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Link to Watch Session"
+                    android:textColor="@color/text_primary"
+                    android:background="@color/toolbar_background"
+                    android:padding="12dp"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp"
+                    android:elevation="2dp" />
             </LinearLayout>
 
             <!-- Action Button -->

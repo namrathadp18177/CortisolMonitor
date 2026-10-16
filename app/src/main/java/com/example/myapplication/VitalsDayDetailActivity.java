@@ -95,6 +95,9 @@ public class VitalsDayDetailActivity extends AppCompatActivity {
         findViewById(R.id.btnExportVitalsDay).setOnClickListener(v ->
                 VitalsCsvExporter.exportVitalsDayAndShare(this, vitalType, dayStartMs, dayEndMs));
 
+        findViewById(R.id.btnExportAllVitalsDay).setOnClickListener(v ->
+                VitalsCsvExporter.exportAllVitalsDayAndShare(this, dayStartMs, dayEndMs));
+
         hrvCard.setVisibility(VitalsDatabaseHelper.VITAL_TYPE_HR.equals(vitalType) ? View.VISIBLE : View.GONE);
 
         executor = Executors.newSingleThreadExecutor();

@@ -191,10 +191,15 @@
             </intent-filter>
         </service>
 
+        <!-- stopWithTask="false": same reasoning as VitalsStreamingService on the watch module;
+             this keeps the phone side of the pipeline alive if the app's task gets removed while
+             streaming, instead of silently stopping ingestion until "Stop watch streaming" is
+             explicitly tapped. -->
         <service
             android:name=".VitalsIngestService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false" />
 
         <activity
             android:name=".LiveVitalsActivity"
@@ -219,6 +224,15 @@
         <activity
             android:name=".VitalsDayDetailActivity"
             android:exported="false" />
+
+        <!-- Ties a watch recording + questionnaire + biomarker test together under one
+             app_session_id (see DatabaseHelper#createSession). Reached from HomeFragment's
+             "Start Session" card, or from a care provider's "Start Test" flow. -->
+        <activity
+            android:name=".StartSessionActivity"
+            android:exported="false"
+            android:label="Start Session"
+            android:theme="@style/AppTheme.Light" />
 
     </application>
 

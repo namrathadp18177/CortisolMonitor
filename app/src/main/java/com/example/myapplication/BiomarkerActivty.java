@@ -33,6 +33,15 @@ public class BiomarkerActivty extends AppCompatActivity {
         int    startStep    = getIntent().getIntExtra("start_step", 0);
         String patientEmail = getIntent().getStringExtra("patient_email");
 
+        // If this test was launched from StartSessionActivity, tag whichever biomarker
+        // experiment ends up getting created (deep inside OutputBluetooth.java, several
+        // screens away) with the session that started it -- see
+        // DatabaseHelper#setCurrentAppSessionId for how this gets picked up and consumed.
+        String appSessionId = getIntent().getStringExtra("app_session_id");
+        if (appSessionId != null && !appSessionId.isEmpty()) {
+            DatabaseHelper.setCurrentAppSessionId(appSessionId);
+        }
+
         android.util.Log.d("STEP_DEBUG", "BiomarkerActivty received start_step: " + startStep);
 
         if ("CARE_PROVIDER".equals(role) && startStep > 0) {

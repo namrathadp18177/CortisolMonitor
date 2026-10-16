@@ -33,6 +33,7 @@ public class PatientHistoryDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!RoleGuard.requireCareProvider(this)) return;
         setContentView(R.layout.activity_patient_history_detail);
 
         if (getSupportActionBar() != null) {

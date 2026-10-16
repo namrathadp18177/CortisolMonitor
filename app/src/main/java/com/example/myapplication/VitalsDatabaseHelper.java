@@ -37,6 +37,7 @@ public class VitalsDatabaseHelper extends SQLiteOpenHelper {
     public static final String TABLE_HR = "hr_samples";
     public static final String TABLE_SKIN_TEMP = "skin_temp_samples";
     public static final String TABLE_ACCEL = "accel_samples";
+    public static final String TABLE_SESSION_NOTES = "session_notes";
 
     // Generic vital-type identifiers shared by the day-wise browsing screens
     // (VitalsDayListActivity / VitalsDayDetailActivity) so they don't need one code path
@@ -100,6 +101,33 @@ public class VitalsDatabaseHelper extends SQLiteOpenHelper {
                 "z REAL, " +
                 "status INTEGER, " +
                 "received_at INTEGER NOT NULL)");
+
+        db.execSQL(CREATE_TABLE_SESSION_NOTES_SQL);
+    }
+
+    // One free-text note per session_id (e.g. "sat still", "walked to kitchen at 10min",
+    // "had coffee before starting") -- Stage 1 of docs/accelerometer_stress_research_and_plan.md
+    // calls this out as cheap, useful ground truth for interpreting accelerometer-flagged
+    // windows later. session_id is UNIQUE so setSessionNote() below can upsert (one note per
+    // session, overwritten on each save, rather than accumulating duplicate rows).
+    //
+    // NOTE: this table is created defensively via ensureSessionNotesTable() (CREATE TABLE IF
+    // NOT EXISTS) rather than by bumping DB_VERSION, deliberately -- onUpgrade() above DROPS
+    // AND REBUILDS every other table in this database (see its own comment: "no real data
+    // worth migrating yet"). Bumping DB_VERSION now would wipe any EDA/HR/skin-temp/accel data
+    // already on a real device just to add this one new table, which this change has no reason
+    // to risk. If onUpgrade's destructive approach is ever revisited, this table should be
+    // folded into onCreate's normal version-bump path instead.
+    private static final String CREATE_TABLE_SESSION_NOTES_SQL =
+            "CREATE TABLE IF NOT EXISTS " + TABLE_SESSION_NOTES + " (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "session_id TEXT NOT NULL UNIQUE, " +
+                    "participant_email TEXT, " +
+                    "note TEXT, " +
+                    "updated_at INTEGER NOT NULL)";
+
+    private void ensureSessionNotesTable(SQLiteDatabase db) {
+        db.execSQL(CREATE_TABLE_SESSION_NOTES_SQL);
     }
 
     @Override
@@ -162,6 +190,106 @@ public class VitalsDatabaseHelper extends SQLiteOpenHelper {
         cv.put("status", status);
         cv.put("received_at", System.currentTimeMillis());
         getWritableDatabase().insert(TABLE_ACCEL, null, cv);
+    }
+
+    /** Saves (or overwrites) the free-text context note for one session -- see
+     *  {@link #TABLE_SESSION_NOTES}'s doc for why this exists. There is currently no screen
+     *  that calls this (storage only, added ahead of the UI). */
+    public void setSessionNote(String sessionId, String participantEmail, String note) {
+        SQLiteDatabase db = getWritableDatabase();
+        ensureSessionNotesTable(db);
+        ContentValues cv = new ContentValues();
+        cv.put("session_id", sessionId);
+        cv.put("participant_email", participantEmail);
+        cv.put("note", note);
+        cv.put("updated_at", System.currentTimeMillis());
+        db.insertWithOnConflict(TABLE_SESSION_NOTES, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    /** The saved context note for one session, or null if none was ever set. */
+    public String getSessionNote(String sessionId) {
+        SQLiteDatabase db = getReadableDatabase();
+        ensureSessionNotesTable(db);
+        try (Cursor c = db.query(TABLE_SESSION_NOTES, new String[]{"note"},
+                "session_id = ?", new String[]{sessionId}, null, null, null)) {
+            if (c.moveToFirst()) {
+                return c.getString(0);
+            }
+        }
+        return null;
+    }
+
+    /** Most recent sample for each of the 4 signals, for one participant -- see
+     *  {@link LiveVitalsActivity} which uses this to populate the live screen immediately on
+     *  open instead of showing blank placeholders for up to ~10s while waiting for the next
+     *  live broadcast. Any field may be null if that signal has no samples yet at all. */
+    public static class LatestSnapshot {
+        public final Float heartRate;
+        public final Float edaConductance;
+        public final Float skinTempC;
+        public final Float accelX, accelY, accelZ;
+        public final Long timestampMs; // latest timestamp across whichever signal(s) contributed
+
+        public LatestSnapshot(Float heartRate, Float edaConductance, Float skinTempC,
+                               Float accelX, Float accelY, Float accelZ, Long timestampMs) {
+            this.heartRate = heartRate;
+            this.edaConductance = edaConductance;
+            this.skinTempC = skinTempC;
+            this.accelX = accelX;
+            this.accelY = accelY;
+            this.accelZ = accelZ;
+            this.timestampMs = timestampMs;
+        }
+    }
+
+    /** Queries all 4 tables for their single most recent row (by timestamp_ms) for one
+     *  participant. Four small indexed-by-nothing queries rather than one UNION query, since
+     *  the tables have different columns and this only runs once per screen open, not on a
+     *  hot path. */
+    public LatestSnapshot getLatestSnapshot(String participantEmail) {
+        SQLiteDatabase db = getReadableDatabase();
+        Float hr = null, eda = null, skinTemp = null, accelX = null, accelY = null, accelZ = null;
+        Long latestTs = null;
+
+        // status == 1 means a valid HR reading, same check WatchDataListenerService uses.
+        try (Cursor c = db.query(TABLE_HR, new String[]{"heart_rate", "timestamp_ms"},
+                "participant_email = ? AND hr_status = 1", new String[]{participantEmail},
+                null, null, "timestamp_ms DESC", "1")) {
+            if (c.moveToFirst()) {
+                hr = (float) c.getInt(0);
+                latestTs = c.getLong(1);
+            }
+        }
+        try (Cursor c = db.query(TABLE_EDA, new String[]{"conductance", "timestamp_ms"},
+                "participant_email = ?", new String[]{participantEmail},
+                null, null, "timestamp_ms DESC", "1")) {
+            if (c.moveToFirst()) {
+                eda = (float) c.getDouble(0);
+                long ts = c.getLong(1);
+                if (latestTs == null || ts > latestTs) latestTs = ts;
+            }
+        }
+        try (Cursor c = db.query(TABLE_SKIN_TEMP, new String[]{"skin_c", "timestamp_ms"},
+                "participant_email = ?", new String[]{participantEmail},
+                null, null, "timestamp_ms DESC", "1")) {
+            if (c.moveToFirst()) {
+                skinTemp = (float) c.getDouble(0);
+                long ts = c.getLong(1);
+                if (latestTs == null || ts > latestTs) latestTs = ts;
+            }
+        }
+        try (Cursor c = db.query(TABLE_ACCEL, new String[]{"x", "y", "z", "timestamp_ms"},
+                "participant_email = ?", new String[]{participantEmail},
+                null, null, "timestamp_ms DESC", "1")) {
+            if (c.moveToFirst()) {
+                accelX = (float) c.getDouble(0);
+                accelY = (float) c.getDouble(1);
+                accelZ = (float) c.getDouble(2);
+                long ts = c.getLong(3);
+                if (latestTs == null || ts > latestTs) latestTs = ts;
+            }
+        }
+        return new LatestSnapshot(hr, eda, skinTemp, accelX, accelY, accelZ, latestTs);
     }
 
     /** One past watch-streaming session, summarized across all four signal tables. */
@@ -246,6 +374,8 @@ public class VitalsDatabaseHelper extends SQLiteOpenHelper {
         db.delete(TABLE_HR, null, null);
         db.delete(TABLE_SKIN_TEMP, null, null);
         db.delete(TABLE_ACCEL, null, null);
+        ensureSessionNotesTable(db);
+        db.delete(TABLE_SESSION_NOTES, null, null);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -51,8 +51,16 @@ public class QuestionnaireMain extends AppCompatActivity {
             getSupportActionBar().setTitle("");
         }
 
-        // One session ID shared across all questionnaires in this visit
-        sharedSessionId = java.util.UUID.randomUUID().toString();
+        // One session ID shared across all questionnaires in this visit. If launched from
+        // StartSessionActivity, reuse ITS app_session_id instead of generating a fresh UUID,
+        // so these responses group together with whatever watch recording / biomarker test
+        // were started as part of the same session (see DatabaseHelper#createSession). A
+        // standalone questionnaire (opened without that extra) keeps the old UUID-per-visit
+        // behavior unchanged.
+        String incomingSessionId = getIntent() != null ? getIntent().getStringExtra("app_session_id") : null;
+        sharedSessionId = (incomingSessionId != null && !incomingSessionId.isEmpty())
+                ? incomingSessionId
+                : java.util.UUID.randomUUID().toString();
 
         // Initialize database helper using the singleton pattern
         dbHelper = DatabaseHelper.getInstance(this);
